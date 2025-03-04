@@ -117,6 +117,7 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
   };
   
   const handleWebviewLoad = () => {
+    // Ensure loading state is reset
     setIsLoading(false);
     
     // Try to update page title and favicon if webview is available
@@ -124,7 +125,14 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
       try {
         const title = webviewRef.current.getTitle();
         setPageTitle(title || extractDomainFromUrl(url));
+        
+        // Try to get favicon if available
+        if (webviewRef.current.getFavicon) {
+          const icon = webviewRef.current.getFavicon();
+          if (icon) setFavicon(icon);
+        }
       } catch (err) {
+        console.error("Error getting page info:", err);
         setPageTitle(extractDomainFromUrl(url));
       }
     }
@@ -157,9 +165,18 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
   };
   
   const refresh = () => {
-    setIsLoading(true);
     if (webviewRef.current) {
-      webviewRef.current.reload();
+      try {
+        // The loading state will be handled by the event listeners
+        webviewRef.current.reload();
+      } catch (error) {
+        console.error("Error reloading page:", error);
+        // If reload fails, reset loading state
+        setIsLoading(false);
+      }
+    } else {
+      // If webview ref is not available, just navigate to the current URL again
+      navigateTo(url);
     }
   };
   
@@ -183,13 +200,41 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
         // Try to set additional attributes if needed
         webviewRef.current.setAttribute('allowpopups', '');
         webviewRef.current.setAttribute('nodeintegration', 'on');
+        
+        // Add event listeners for loading state
+        if (window.electron) {
+          // For Electron webview
+          webviewRef.current.addEventListener('did-start-loading', () => {
+            setIsLoading(true);
+          });
+          
+          webviewRef.current.addEventListener('did-stop-loading', () => {
+            setIsLoading(false);
+          });
+          
+          webviewRef.current.addEventListener('did-finish-load', handleWebviewLoad);
+        } else {
+          // For iframe fallback
+          webviewRef.current.onloadstart = () => setIsLoading(true);
+          webviewRef.current.onloadend = () => setIsLoading(false);
+        }
       }
     };
     
     // Set a small delay to ensure the ref is available
     const timer = setTimeout(setupWebview, 100);
     
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Clean up event listeners
+      if (webviewRef.current) {
+        if (window.electron) {
+          webviewRef.current.removeEventListener('did-start-loading', () => {});
+          webviewRef.current.removeEventListener('did-stop-loading', () => {});
+          webviewRef.current.removeEventListener('did-finish-load', handleWebviewLoad);
+        }
+      }
+    };
   }, []);
 
   return (
@@ -303,6 +348,7 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
           />
         )}
         
+        {/* Loading indicator */}
         {isLoading && (
           <div className="browser-loading-indicator">
             <div className="browser-loading-bar"></div>
