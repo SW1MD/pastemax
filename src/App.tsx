@@ -72,7 +72,7 @@ const App = () => {
 
   // Add new state for browser
   const [browserVisible, setBrowserVisible] = useState<boolean>(
-    savedBrowserVisible ? savedBrowserVisible === "true" : false
+    false
   );
   const [browserUrl, setBrowserUrl] = useState<string>(
     savedBrowserUrl || "https://www.google.com"
