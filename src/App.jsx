@@ -47,9 +47,7 @@ const App = () => {
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   // Add new state for browser
-  const [browserVisible, setBrowserVisible] = useState(
-    savedBrowserVisible ? savedBrowserVisible === "true" : false
-  );
+  const [browserVisible, setBrowserVisible] = useState(false);
   const [browserUrl, setBrowserUrl] = useState(
     savedBrowserUrl || "https://www.google.com"
   );
