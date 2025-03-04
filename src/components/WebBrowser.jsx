@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { RefreshCw, Home, ArrowLeft, ArrowRight, X, Star, Search, Menu, Plus, Copy, ExternalLink } from "lucide-react";
+import { RefreshCw, Home, ArrowLeft, ArrowRight, X, Star, Search, Menu, Plus, Copy, ExternalLink, MoreVertical, Download, Share2, Settings, Info } from "lucide-react";
 import ContextMenu from "./ContextMenu";
 
 // Default to our custom home page
@@ -18,8 +18,10 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
   const [favicon, setFavicon] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
+  const [showPopover, setShowPopover] = useState(false);
   
   const webviewRef = useRef(null);
+  const popoverButtonRef = useRef(null);
   
   // Context menu handlers
   const handleContextMenu = useCallback((e) => {
@@ -76,6 +78,98 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
       icon: <ExternalLink size={16} />,
       label: "Open in default browser",
       onClick: openInDefaultBrowser
+    }
+  ];
+  
+  // Popover menu handlers
+  const togglePopover = useCallback(() => {
+    setShowPopover(prev => !prev);
+  }, []);
+
+  const closePopover = useCallback(() => {
+    setShowPopover(false);
+  }, []);
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (popoverButtonRef.current && !popoverButtonRef.current.contains(event.target) && 
+          !event.target.closest('.browser-popover-menu')) {
+        closePopover();
+      }
+    };
+
+    if (showPopover) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showPopover, closePopover]);
+
+  // Popover menu items
+  const popoverMenuItems = [
+    {
+      icon: <Download size={16} />,
+      label: "Download page",
+      onClick: () => {
+        if (webviewRef.current && window.electron) {
+          // This would need to be implemented in the Electron main process
+          window.electron.downloadPage(url);
+        }
+        closePopover();
+      }
+    },
+    {
+      icon: <Share2 size={16} />,
+      label: "Share page",
+      onClick: () => {
+        if (navigator.share) {
+          navigator.share({
+            title: pageTitle,
+            url: url
+          });
+        } else {
+          copyCurrentUrl();
+          alert("URL copied to clipboard");
+        }
+        closePopover();
+      }
+    },
+    { divider: true },
+    {
+      icon: <ExternalLink size={16} />,
+      label: "Open in default browser",
+      onClick: () => {
+        openInDefaultBrowser();
+        closePopover();
+      }
+    },
+    {
+      icon: <Copy size={16} />,
+      label: "Copy URL",
+      onClick: () => {
+        copyCurrentUrl();
+        closePopover();
+      }
+    },
+    { divider: true },
+    {
+      icon: <Settings size={16} />,
+      label: "Browser settings",
+      onClick: () => {
+        // Implement browser settings
+        closePopover();
+      }
+    },
+    {
+      icon: <Info size={16} />,
+      label: "About this browser",
+      onClick: () => {
+        // Show browser info
+        closePopover();
+      }
     }
   ];
   
@@ -293,18 +387,50 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
             <div className="url-security-indicator">
               <Search size={14} />
             </div>
-            <form onSubmit={handleSubmit} className="web-browser-url-bar">
-              <input
-                type="text"
-                value={url}
-                onChange={handleUrlChange}
-                placeholder="Search or enter website name"
-                className="web-browser-url-input"
-              />
-            </form>
+            <input
+              type="text"
+              value={url}
+              onChange={handleUrlChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              placeholder="Search or enter website name"
+              className="web-browser-url-input"
+            />
             <button className="bookmark-button" title="Bookmark this page">
               <Star size={16} />
             </button>
+            <button 
+              ref={popoverButtonRef}
+              className="browser-menu-button" 
+              title="Browser menu"
+              onClick={togglePopover}
+            >
+              <MoreVertical size={16} />
+            </button>
+            
+            {/* Popover Menu */}
+            {showPopover && (
+              <div className="browser-popover-menu">
+                {popoverMenuItems.map((item, index) => (
+                  item.divider ? (
+                    <div key={`divider-${index}`} className="browser-popover-divider" />
+                  ) : (
+                    <button 
+                      key={`menu-item-${index}`} 
+                      className="browser-popover-item"
+                      onClick={item.onClick}
+                    >
+                      <span className="browser-popover-item-icon">{item.icon}</span>
+                      <span className="browser-popover-item-label">{item.label}</span>
+                    </button>
+                  )
+                ))}
+              </div>
+            )}
           </div>
           
           <div className="web-browser-actions">
