@@ -10,11 +10,27 @@ const CodeEditor = ({ file, onClose, problemHighlightingActive }) => {
   const [showTip, setShowTip] = useState(true);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
   const [localProblemHighlighting, setLocalProblemHighlighting] = useState(problemHighlightingActive || false);
+  const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme') || 'dark');
   
   // Update local state when prop changes
   useEffect(() => {
     setLocalProblemHighlighting(problemHighlightingActive);
   }, [problemHighlightingActive]);
+  
+  // Listen for theme changes
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          setTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    
+    return () => observer.disconnect();
+  }, []);
   
   // Toggle problem highlighting locally
   const toggleProblemHighlighting = () => {
@@ -377,7 +393,7 @@ const CodeEditor = ({ file, onClose, problemHighlightingActive }) => {
           defaultLanguage={getLanguage(file.name)}
           value={content}
           onChange={handleEditorChange}
-          theme="vs-dark"
+          theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
           beforeMount={handleEditorWillMount}
           onMount={handleEditorDidMount}
           options={{

@@ -37,7 +37,12 @@ function ensureSerializable(data) {
 contextBridge.exposeInMainWorld("electron", {
   send: (channel, data) => {
     // whitelist channels
-    const validChannels = ["open-folder", "request-file-list"];
+    const validChannels = [
+      "open-folder", 
+      "request-file-list", 
+      "create-file", 
+      "create-folder"
+    ];
     if (validChannels.includes(channel)) {
       // Ensure data is serializable before sending
       const serializedData = ensureSerializable(data);
@@ -49,6 +54,8 @@ contextBridge.exposeInMainWorld("electron", {
       "folder-selected",
       "file-list-data",
       "file-processing-status",
+      "file-created",
+      "folder-created"
     ];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`

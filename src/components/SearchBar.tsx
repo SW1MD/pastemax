@@ -1,15 +1,10 @@
 import React, { useState } from "react";
 import { Search, X } from "lucide-react";
-
-interface SearchBarProps {
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
-  placeholder?: string;
-}
+import { SearchBarProps } from "../types/FileTypes";
 
 const SearchBar = ({
-  searchTerm,
-  onSearchChange,
+  value,
+  onChange,
   placeholder = "Search...",
 }: SearchBarProps) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -23,15 +18,15 @@ const SearchBar = ({
         type="text"
         className="search-input"
         placeholder={placeholder}
-        value={searchTerm}
-        onChange={(e) => onSearchChange(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
       />
-      {searchTerm && (
+      {value && (
         <button
           className="search-clear-btn"
-          onClick={() => onSearchChange("")}
+          onClick={() => onChange("")}
           aria-label="Clear search"
         >
           <X size={14} />

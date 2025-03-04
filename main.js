@@ -239,6 +239,79 @@ ipcMain.on("open-folder", async (event) => {
   }
 });
 
+// Handle creating a new file
+ipcMain.on("create-file", (event, { folderPath, fileName }) => {
+  try {
+    const filePath = path.join(folderPath, fileName);
+    
+    // Check if file already exists
+    if (fs.existsSync(filePath)) {
+      event.sender.send("file-created", { 
+        success: false, 
+        error: "File already exists" 
+      });
+      return;
+    }
+    
+    // Create the file with empty content
+    fs.writeFileSync(filePath, "");
+    
+    // Read the file info to return
+    const stats = fs.statSync(filePath);
+    const fileData = {
+      name: fileName,
+      path: filePath,
+      content: "",
+      tokenCount: 0,
+      size: stats.size,
+      isBinary: false,
+      isSkipped: false,
+      fileType: path.extname(fileName).slice(1) || "txt"
+    };
+    
+    event.sender.send("file-created", { 
+      success: true, 
+      file: fileData 
+    });
+  } catch (err) {
+    console.error("Error creating file:", err);
+    event.sender.send("file-created", { 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// Handle creating a new folder
+ipcMain.on("create-folder", (event, { folderPath, folderName }) => {
+  try {
+    const newFolderPath = path.join(folderPath, folderName);
+    
+    // Check if folder already exists
+    if (fs.existsSync(newFolderPath)) {
+      event.sender.send("folder-created", { 
+        success: false, 
+        error: "Folder already exists" 
+      });
+      return;
+    }
+    
+    // Create the folder
+    fs.mkdirSync(newFolderPath);
+    
+    event.sender.send("folder-created", { 
+      success: true, 
+      path: newFolderPath 
+    });
+  } catch (err) {
+    console.error("Error creating folder:", err);
+    event.sender.send("folder-created", { 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
 // Function to parse .gitignore file if it exists
 function loadGitignore(rootDir) {
   const ig = ignore();

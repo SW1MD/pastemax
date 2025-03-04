@@ -23,18 +23,10 @@ export interface TreeNode {
 }
 
 export interface SidebarProps {
-  selectedFolder: string | null;
-  openFolder: () => void;
-  allFiles: FileData[];
-  selectedFiles: string[];
-  toggleFileSelection: (filePath: string) => void;
-  toggleFolderSelection: (folderPath: string, isSelected: boolean) => void;
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
-  selectAllFiles: () => void;
-  deselectAllFiles: () => void;
-  expandedNodes: Record<string, boolean>;
-  toggleExpanded: (nodeId: string) => void;
+  collapsed?: boolean;
+  toggleCollapsed?: () => void;
+  activePage?: string;
+  setActivePage?: (page: string) => void;
 }
 
 export interface FileListProps {
@@ -63,8 +55,9 @@ export interface SortOption {
 }
 
 export interface SearchBarProps {
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
+  value: string;
+  onChange: (term: string) => void;
+  placeholder?: string;
 }
 
 export interface CopyButtonProps {
