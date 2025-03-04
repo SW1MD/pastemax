@@ -1,0 +1,129 @@
+/* Add these styles to your existing App.css file */
+
+.content-main {
+  height: calc(100vh - 75px); /* Maximize height, only accounting for header */
+  margin-bottom: 0; /* Remove bottom margin */
+  overflow: hidden;
+}
+
+.editor-container {
+  height: 100%; /* Take full height of parent */
+  width: 100%;
+}
+
+.file-list-container {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.file-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+  padding: 15px;
+}
+
+/* Style for the copy button container to make it more compact */
+.copy-button-container {
+  padding: 5px;
+  background-color: #f5f5f5;
+  border-top: 1px solid #ddd;
+  height: 15px; /* Keep very compact */
+  display: flex;
+  align-items: center;
+}
+
+/* Make the button inside more compact */
+.copy-button-container button {
+  height: 30px;
+  padding: 0 15px;
+  line-height: 30px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .content-main {
+    height: auto;
+    min-height: 500px;
+  }
+  
+  .editor-container,
+  .file-list-container {
+    height: 500px;
+  }
+}
+
+/* Content header styles to make it more compact */
+.content-header {
+  padding: 5px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  height: 35px; /* Reduced height */
+}
+
+.content-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.content-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* App header styles */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  background-color: #1e1e1e;
+  border-bottom: 1px solid #333;
+  height: 40px; /* Compact header */
+}
+
+.header h1 {
+  font-size: 16px;
+  margin: 0;
+  color: #e0e0e0;
+}
+
+.folder-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #888;
+}
+
+.selected-folder {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-folder-btn {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  height: 28px;
+}
+
+/* Styles for editor view mode */
+.content-area.editor-view .content-main {
+  height: calc(100vh - 76px); /* Full height minus just the headers */
+}
+
+.content-area.editor-view .editor-container {
+  height: 100%;
+} 

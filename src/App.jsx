@@ -2,23 +2,6 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
-import { FileData } from "./types/FileTypes";
-
-// Access the electron API from the window object
-declare global {
-  interface Window {
-    electron: {
-      ipcRenderer: {
-        send: (channel: string, data?: any) => void;
-        on: (channel: string, func: (...args: any[]) => void) => void;
-        removeListener: (
-          channel: string,
-          func: (...args: any[]) => void,
-        ) => void;
-      };
-    };
-  }
-}
 
 // Keys for localStorage
 const STORAGE_KEYS = {
@@ -36,31 +19,25 @@ const App = () => {
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
 
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(
-    savedFolder,
+  const [selectedFolder, setSelectedFolder] = useState(savedFolder);
+  const [allFiles, setAllFiles] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState(
+    savedFiles ? JSON.parse(savedFiles) : []
   );
-  const [allFiles, setAllFiles] = useState<FileData[]>([]);
-  const [selectedFiles, setSelectedFiles] = useState<string[]>(
-    savedFiles ? JSON.parse(savedFiles) : [],
-  );
-  const [sortOrder, setSortOrder] = useState<string>(
-    savedSortOrder || "tokens-desc",
-  );
-  const [searchTerm, setSearchTerm] = useState<string>(savedSearchTerm || "");
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>(
-    {},
-  );
-  const [displayedFiles, setDisplayedFiles] = useState<FileData[]>([]);
-  const [copyStatus, setCopyStatus] = useState<boolean>(false);
-  const [processingStatus, setProcessingStatus] = useState<{
-    status: "idle" | "processing" | "complete" | "error";
-    message: string;
-  }>({ status: "idle", message: "" });
+  const [sortOrder, setSortOrder] = useState(savedSortOrder || "tokens-desc");
+  const [searchTerm, setSearchTerm] = useState(savedSearchTerm || "");
+  const [expandedNodes, setExpandedNodes] = useState({});
+  const [displayedFiles, setDisplayedFiles] = useState([]);
+  const [copyStatus, setCopyStatus] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState({
+    status: "idle",
+    message: ""
+  });
   // Add viewedFile state to track which file is being viewed in the editor
-  const [viewedFile, setViewedFile] = useState<FileData | null>(null);
+  const [viewedFile, setViewedFile] = useState(null);
 
   // State for sort dropdown
-  const [sortDropdownOpen, setSortDropdownOpen] = useState<boolean>(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
@@ -68,7 +45,7 @@ const App = () => {
   // Load expanded nodes state from localStorage
   useEffect(() => {
     const savedExpandedNodes = localStorage.getItem(
-      STORAGE_KEYS.EXPANDED_NODES,
+      STORAGE_KEYS.EXPANDED_NODES
     );
     if (savedExpandedNodes) {
       try {
@@ -92,7 +69,7 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEYS.SELECTED_FILES,
-      JSON.stringify(selectedFiles),
+      JSON.stringify(selectedFiles)
     );
   }, [selectedFiles]);
 
@@ -117,7 +94,7 @@ const App = () => {
     console.log("Loading saved folder on startup:", selectedFolder);
     setProcessingStatus({
       status: "processing",
-      message: "Loading files from previously selected folder...",
+      message: "Loading files from previously selected folder..."
     });
     window.electron.ipcRenderer.send("request-file-list", selectedFolder);
 
@@ -132,7 +109,7 @@ const App = () => {
       return;
     }
 
-    const handleFolderSelected = (folderPath: string) => {
+    const handleFolderSelected = (folderPath) => {
       // Check if folderPath is valid string
       if (typeof folderPath === "string") {
         console.log("Folder selected:", folderPath);
@@ -141,24 +118,24 @@ const App = () => {
         setSelectedFiles([]);
         setProcessingStatus({
           status: "processing",
-          message: "Requesting file list...",
+          message: "Requesting file list..."
         });
         window.electron.ipcRenderer.send("request-file-list", folderPath);
       } else {
         console.error("Invalid folder path received:", folderPath);
         setProcessingStatus({
           status: "error",
-          message: "Invalid folder path received",
+          message: "Invalid folder path received"
         });
       }
     };
 
-    const handleFileListData = (files: FileData[]) => {
+    const handleFileListData = (files) => {
       console.log("Received file list data:", files.length, "files");
       setAllFiles(files);
       setProcessingStatus({
         status: "complete",
-        message: `Loaded ${files.length} files`,
+        message: `Loaded ${files.length} files`
       });
 
       // Apply filters and sort to the new files
@@ -167,41 +144,57 @@ const App = () => {
       // Select only files that are not binary, not skipped, and not excluded by default
       const selectablePaths = files
         .filter(
-          (file: FileData) =>
-            !file.isBinary && !file.isSkipped && !file.excludedByDefault, // Respect the excludedByDefault flag
+          (file) =>
+            !file.isBinary && !file.isSkipped && !file.excludedByDefault
         )
-        .map((file: FileData) => file.path);
+        .map((file) => file.path);
 
       setSelectedFiles(selectablePaths);
     };
 
-    const handleProcessingStatus = (status: {
-      status: "idle" | "processing" | "complete" | "error";
-      message: string;
-    }) => {
+    const handleProcessingStatus = (status) => {
       console.log("Processing status:", status);
       setProcessingStatus(status);
+    };
+
+    const handleFileSaved = (result) => {
+      if (result.success) {
+        console.log("File saved successfully:", result.path);
+        // Optionally show a success message
+      } else {
+        console.error("Error saving file:", result.error);
+        // Show an error message
+        setProcessingStatus({
+          status: "error",
+          message: "Error saving file: " + result.error
+        });
+      }
     };
 
     window.electron.ipcRenderer.on("folder-selected", handleFolderSelected);
     window.electron.ipcRenderer.on("file-list-data", handleFileListData);
     window.electron.ipcRenderer.on(
       "file-processing-status",
-      handleProcessingStatus,
+      handleProcessingStatus
     );
+    window.electron.ipcRenderer.on("file-saved", handleFileSaved);
 
     return () => {
       window.electron.ipcRenderer.removeListener(
         "folder-selected",
-        handleFolderSelected,
+        handleFolderSelected
       );
       window.electron.ipcRenderer.removeListener(
         "file-list-data",
-        handleFileListData,
+        handleFileListData
       );
       window.electron.ipcRenderer.removeListener(
         "file-processing-status",
-        handleProcessingStatus,
+        handleProcessingStatus
+      );
+      window.electron.ipcRenderer.removeListener(
+        "file-saved",
+        handleFileSaved
       );
     };
   }, [isElectron, sortOrder, searchTerm]);
@@ -217,11 +210,7 @@ const App = () => {
   };
 
   // Apply filters and sorting to files
-  const applyFiltersAndSort = (
-    files: FileData[],
-    sort: string,
-    filter: string,
-  ) => {
+  const applyFiltersAndSort = (files, sort, filter) => {
     let filtered = files;
 
     // Apply filter
@@ -230,7 +219,7 @@ const App = () => {
       filtered = files.filter(
         (file) =>
           file.name.toLowerCase().includes(lowerFilter) ||
-          file.path.toLowerCase().includes(lowerFilter),
+          file.path.toLowerCase().includes(lowerFilter)
       );
     }
 
@@ -254,10 +243,10 @@ const App = () => {
   };
 
   // Toggle file selection
-  const toggleFileSelection = (filePath: string) => {
-    setSelectedFiles((prev: string[]) => {
+  const toggleFileSelection = (filePath) => {
+    setSelectedFiles((prev) => {
       if (prev.includes(filePath)) {
-        return prev.filter((path: string) => path !== filePath);
+        return prev.filter((path) => path !== filePath);
       } else {
         return [...prev, filePath];
       }
@@ -265,18 +254,18 @@ const App = () => {
   };
 
   // Toggle folder selection (select/deselect all files in folder)
-  const toggleFolderSelection = (folderPath: string, isSelected: boolean) => {
+  const toggleFolderSelection = (folderPath, isSelected) => {
     const filesInFolder = allFiles.filter(
-      (file: FileData) =>
-        file.path.startsWith(folderPath) && !file.isBinary && !file.isSkipped,
+      (file) =>
+        file.path.startsWith(folderPath) && !file.isBinary && !file.isSkipped
     );
 
     if (isSelected) {
       // Add all files from this folder that aren't already selected
-      const filePaths = filesInFolder.map((file: FileData) => file.path);
-      setSelectedFiles((prev: string[]) => {
+      const filePaths = filesInFolder.map((file) => file.path);
+      setSelectedFiles((prev) => {
         const newSelection = [...prev];
-        filePaths.forEach((path: string) => {
+        filePaths.forEach((path) => {
           if (!newSelection.includes(path)) {
             newSelection.push(path);
           }
@@ -285,24 +274,23 @@ const App = () => {
       });
     } else {
       // Remove all files from this folder
-      setSelectedFiles((prev: string[]) =>
+      setSelectedFiles((prev) =>
         prev.filter(
-          (path: string) =>
-            !filesInFolder.some((file: FileData) => file.path === path),
-        ),
+          (path) => !filesInFolder.some((file) => file.path === path)
+        )
       );
     }
   };
 
   // Handle sort change
-  const handleSortChange = (newSort: string) => {
+  const handleSortChange = (newSort) => {
     setSortOrder(newSort);
     applyFiltersAndSort(allFiles, newSort, searchTerm);
     setSortDropdownOpen(false); // Close dropdown after selection
   };
 
   // Handle search change
-  const handleSearchChange = (newSearch: string) => {
+  const handleSearchChange = (newSearch) => {
     setSearchTerm(newSearch);
     applyFiltersAndSort(allFiles, sortOrder, newSearch);
   };
@@ -314,8 +302,8 @@ const App = () => {
 
   // Calculate total tokens from selected files
   const calculateTotalTokens = () => {
-    return selectedFiles.reduce((total: number, path: string) => {
-      const file = allFiles.find((f: FileData) => f.path === path);
+    return selectedFiles.reduce((total, path) => {
+      const file = allFiles.find((f) => f.path === path);
       return total + (file ? file.tokenCount : 0);
     }, 0);
   };
@@ -325,8 +313,8 @@ const App = () => {
     // Sort selected files according to current sort order
     const [sortKey, sortDir] = sortOrder.split("-");
     const sortedSelected = allFiles
-      .filter((file: FileData) => selectedFiles.includes(file.path))
-      .sort((a: FileData, b: FileData) => {
+      .filter((file) => selectedFiles.includes(file.path))
+      .sort((a, b) => {
         let comparison = 0;
 
         if (sortKey === "name") {
@@ -345,7 +333,7 @@ const App = () => {
     }
 
     let concatenatedString = "";
-    sortedSelected.forEach((file: FileData) => {
+    sortedSelected.forEach((file) => {
       concatenatedString += `\n\n// ---- File: ${file.name} ----\n\n`;
       concatenatedString += file.content;
     });
@@ -356,12 +344,12 @@ const App = () => {
   // Handle select all files
   const selectAllFiles = () => {
     const selectablePaths = displayedFiles
-      .filter((file: FileData) => !file.isBinary && !file.isSkipped)
-      .map((file: FileData) => file.path);
+      .filter((file) => !file.isBinary && !file.isSkipped)
+      .map((file) => file.path);
 
-    setSelectedFiles((prev: string[]) => {
+    setSelectedFiles((prev) => {
       const newSelection = [...prev];
-      selectablePaths.forEach((path: string) => {
+      selectablePaths.forEach((path) => {
         if (!newSelection.includes(path)) {
           newSelection.push(path);
         }
@@ -372,9 +360,9 @@ const App = () => {
 
   // Handle deselect all files
   const deselectAllFiles = () => {
-    const displayedPaths = displayedFiles.map((file: FileData) => file.path);
-    setSelectedFiles((prev: string[]) =>
-      prev.filter((path: string) => !displayedPaths.includes(path)),
+    const displayedPaths = displayedFiles.map((file) => file.path);
+    setSelectedFiles((prev) =>
+      prev.filter((path) => !displayedPaths.includes(path))
     );
   };
 
@@ -387,8 +375,8 @@ const App = () => {
   ];
 
   // Handle expand/collapse state changes
-  const toggleExpanded = (nodeId: string) => {
-    setExpandedNodes((prev: Record<string, boolean>) => {
+  const toggleExpanded = (nodeId) => {
+    setExpandedNodes((prev) => {
       const newState = {
         ...prev,
         [nodeId]: prev[nodeId] === undefined ? false : !prev[nodeId],
@@ -397,7 +385,7 @@ const App = () => {
       // Save to localStorage
       localStorage.setItem(
         STORAGE_KEYS.EXPANDED_NODES,
-        JSON.stringify(newState),
+        JSON.stringify(newState)
       );
 
       return newState;
@@ -519,4 +507,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default App; 
