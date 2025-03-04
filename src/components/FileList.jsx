@@ -10,7 +10,8 @@ const FileList = ({
   toggleFileSelection,
   viewedFile,
   onViewFile,
-  onCloseView
+  onCloseView,
+  problemHighlightingActive
 }) => {
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
 
@@ -75,7 +76,15 @@ const FileList = ({
 
   // If a file is being viewed, show the code editor instead of the file list
   if (viewedFile) {
-    return <CodeEditor file={viewedFile} onClose={onCloseView} />;
+    return (
+      <div className="full-height-editor">
+        <CodeEditor 
+          file={viewedFile} 
+          onClose={onCloseView} 
+          problemHighlightingActive={problemHighlightingActive}
+        />
+      </div>
+    );
   }
 
   return (

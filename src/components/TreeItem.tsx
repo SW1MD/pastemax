@@ -63,6 +63,18 @@ const TreeItem = ({
     }
   }, [isDirectoryPartiallySelected]);
 
+  // Add effect to update checkbox state when selectedFiles changes
+  useEffect(() => {
+    if (checkboxRef.current) {
+      if (type === "file") {
+        checkboxRef.current.checked = isSelected;
+      } else {
+        checkboxRef.current.checked = isDirectorySelected;
+        checkboxRef.current.indeterminate = isDirectoryPartiallySelected;
+      }
+    }
+  }, [selectedFiles, isSelected, isDirectorySelected, isDirectoryPartiallySelected, type]);
+
   const handleToggle = (e: ReactMouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
     toggleExpanded(id);
@@ -98,6 +110,7 @@ const TreeItem = ({
       }`}
       style={{ marginLeft: `${level * 16}px` }}
       onClick={handleItemClick}
+      data-path={path}
     >
       {type === "directory" && (
         <div

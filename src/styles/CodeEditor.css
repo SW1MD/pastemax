@@ -2,10 +2,15 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
+  height: 100vh;
   background-color: #1e1e1e;
-  border-radius: 4px;
+  border-radius: 0;
   overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .code-editor-header {
@@ -103,12 +108,17 @@
 /* Make sure the editor takes full height */
 #code-editor {
   width: 100% !important;
-  height: calc(100% - 40px) !important;
+  height: calc(100% - 40px) !important; /* Account for the header */
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 .code-editor-content {
   flex: 1;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 40px); /* Account for the header */
 }
 
 .code-editor-tip {
@@ -168,4 +178,62 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Problem highlighting styles for Monaco editor */
+.problem-highlighting-active .monaco-editor .squiggly-error {
+  background: rgba(255, 0, 0, 0.2);
+  border-bottom: 2px wavy rgba(255, 0, 0, 0.7);
+}
+
+.problem-highlighting-active .monaco-editor .squiggly-warning {
+  background: rgba(255, 200, 0, 0.2);
+  border-bottom: 2px wavy rgba(255, 200, 0, 0.7);
+}
+
+.problem-highlighting-active .monaco-editor .squiggly-info {
+  background: rgba(0, 120, 255, 0.2);
+  border-bottom: 2px wavy rgba(0, 120, 255, 0.7);
+}
+
+.problem-highlighting-active .monaco-editor .squiggly-hint {
+  background: rgba(0, 200, 0, 0.2);
+  border-bottom: 2px wavy rgba(0, 200, 0, 0.7);
+}
+
+/* Hide problem markers when highlighting is disabled */
+.code-editor-container:not(.problem-highlighting-active) .monaco-editor .squiggly-error,
+.code-editor-container:not(.problem-highlighting-active) .monaco-editor .squiggly-warning,
+.code-editor-container:not(.problem-highlighting-active) .monaco-editor .squiggly-info,
+.code-editor-container:not(.problem-highlighting-active) .monaco-editor .squiggly-hint {
+  display: none !important;
+}
+
+/* Editor problem highlight toggle button */
+.editor-problem-highlight-toggle {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #333;
+  color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.editor-problem-highlight-toggle:hover {
+  transform: scale(1.05);
+  background-color: #444;
+}
+
+.editor-problem-highlight-toggle.active {
+  background-color: #007acc;
+  color: white;
 } 

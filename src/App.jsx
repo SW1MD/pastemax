@@ -15,6 +15,7 @@ const STORAGE_KEYS = {
   EXPANDED_NODES: "pastemax-expanded-nodes",
   BROWSER_VISIBLE: "pastemax-browser-visible",
   BROWSER_URL: "pastemax-browser-url",
+  PROBLEM_HIGHLIGHT: "pastemax-problem-highlight",
 };
 
 const App = () => {
@@ -25,6 +26,7 @@ const App = () => {
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
   const savedBrowserVisible = localStorage.getItem(STORAGE_KEYS.BROWSER_VISIBLE);
   const savedBrowserUrl = localStorage.getItem(STORAGE_KEYS.BROWSER_URL);
+  const savedProblemHighlight = localStorage.getItem(STORAGE_KEYS.PROBLEM_HIGHLIGHT);
 
   const [selectedFolder, setSelectedFolder] = useState(savedFolder);
   const [allFiles, setAllFiles] = useState([]);
@@ -40,16 +42,20 @@ const App = () => {
     status: "idle",
     message: ""
   });
-  // Add viewedFile state to track which file is being viewed in the editor
   const [viewedFile, setViewedFile] = useState(null);
 
   // State for sort dropdown
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   // Add new state for browser
-  const [browserVisible, setBrowserVisible] = useState(false);
+  const [browserVisible, setBrowserVisible] = useState(
+    savedBrowserVisible === "true"
+  );
   const [browserUrl, setBrowserUrl] = useState(
     savedBrowserUrl || "https://www.google.com"
+  );
+  const [problemHighlightingActive, setProblemHighlightingActive] = useState(
+    savedProblemHighlight === "true"
   );
 
   // Check if we're running in Electron or browser environment
@@ -550,6 +556,13 @@ const App = () => {
     }
   }, []);
 
+  // Toggle problem highlighting
+  const toggleProblemHighlighting = () => {
+    const newState = !problemHighlightingActive;
+    setProblemHighlightingActive(newState);
+    localStorage.setItem(STORAGE_KEYS.PROBLEM_HIGHLIGHT, newState.toString());
+  };
+
   return (
     <div className="app-container">
       <div className="header">
@@ -612,46 +625,44 @@ const App = () => {
               toggleExpanded={toggleExpanded}
             />
             <div className="content-area">
-              <div className="content-header">
-                <div className="content-title">
-                  {viewedFile ? "Viewing File" : "Selected Files"}
+              {!viewedFile && (
+                <div className="content-header">
+                  <div className="content-title">
+                    Selected Files
+                  </div>
+                  <div className="content-actions">
+                    <div className="sort-dropdown">
+                      <button
+                        className="sort-dropdown-button"
+                        onClick={toggleSortDropdown}
+                      >
+                        Sort:{" "}
+                        {sortOptions.find((opt) => opt.value === sortOrder)
+                          ?.label || sortOrder}
+                      </button>
+                      {sortDropdownOpen && (
+                        <div className="sort-options">
+                          {sortOptions.map((option) => (
+                            <div
+                              key={option.value}
+                              className={`sort-option ${
+                                sortOrder === option.value ? "active" : ""
+                              }`}
+                              onClick={() => handleSortChange(option.value)}
+                            >
+                              {option.label}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="file-stats">
+                      {selectedFiles.length} files | ~
+                      {calculateTotalTokens().toLocaleString()} tokens
+                    </div>
+                  </div>
                 </div>
-                <div className="content-actions">
-                  {!viewedFile && (
-                    <>
-                      <div className="sort-dropdown">
-                        <button
-                          className="sort-dropdown-button"
-                          onClick={toggleSortDropdown}
-                        >
-                          Sort:{" "}
-                          {sortOptions.find((opt) => opt.value === sortOrder)
-                            ?.label || sortOrder}
-                        </button>
-                        {sortDropdownOpen && (
-                          <div className="sort-options">
-                            {sortOptions.map((option) => (
-                              <div
-                                key={option.value}
-                                className={`sort-option ${
-                                  sortOrder === option.value ? "active" : ""
-                                }`}
-                                onClick={() => handleSortChange(option.value)}
-                              >
-                                {option.label}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="file-stats">
-                        {selectedFiles.length} files | ~
-                        {calculateTotalTokens().toLocaleString()} tokens
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+              )}
 
               <FileList
                 files={displayedFiles}
@@ -660,6 +671,7 @@ const App = () => {
                 viewedFile={viewedFile}
                 onViewFile={(file) => setViewedFile(file)}
                 onCloseView={() => setViewedFile(null)}
+                problemHighlightingActive={problemHighlightingActive}
               />
 
               {!viewedFile && (

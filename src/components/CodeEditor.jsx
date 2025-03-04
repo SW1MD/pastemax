@@ -1,14 +1,25 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Editor from "@monaco-editor/react";
-import { X, Save, Info, Copy, ExternalLink, DownloadCloud } from "lucide-react";
+import { X, Save, Info, Copy, ExternalLink, DownloadCloud, Code } from "lucide-react";
 import ContextMenu from "./ContextMenu";
 
-const CodeEditor = ({ file, onClose }) => {
+const CodeEditor = ({ file, onClose, problemHighlightingActive }) => {
   // Always declare hooks at the top level, before any conditional returns
   const [content, setContent] = useState(file ? file.content : '');
   const [isSaved, setIsSaved] = useState(true);
   const [showTip, setShowTip] = useState(true);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
+  const [localProblemHighlighting, setLocalProblemHighlighting] = useState(problemHighlightingActive || false);
+  
+  // Update local state when prop changes
+  useEffect(() => {
+    setLocalProblemHighlighting(problemHighlightingActive);
+  }, [problemHighlightingActive]);
+  
+  // Toggle problem highlighting locally
+  const toggleProblemHighlighting = () => {
+    setLocalProblemHighlighting(prev => !prev);
+  };
   
   // Hide the tip after 8 seconds
   useEffect(() => {
@@ -343,7 +354,7 @@ const CodeEditor = ({ file, onClose }) => {
   };
 
   return (
-    <div className="code-editor-container" onContextMenu={handleContextMenu}>
+    <div className={`code-editor-container ${localProblemHighlighting ? 'problem-highlighting-active' : ''}`} onContextMenu={handleContextMenu}>
       <div className="code-editor-header">
         <div className="code-editor-filename">{file.name}</div>
         <div className="code-editor-controls">
@@ -362,7 +373,7 @@ const CodeEditor = ({ file, onClose }) => {
       </div>
       <div className="code-editor-content">
         <Editor
-          height="calc(100vh - 200px)"
+          height="calc(100vh - 125px)"
           defaultLanguage={getLanguage(file.name)}
           value={content}
           onChange={handleEditorChange}
@@ -383,68 +394,21 @@ const CodeEditor = ({ file, onClose }) => {
             suggestOnTriggerCharacters: true,
             acceptSuggestionOnEnter: "on",
             tabCompletion: "on",
-            suggestSelection: "first",
-            snippetSuggestions: "inline",
-            wordBasedSuggestions: true,
-            parameterHints: { enabled: true },
-            // Make suggestions appear faster and more often
-            suggest: {
-              showIcons: true,
-              showStatusBar: true,
-              preview: true,
-              showMethods: true,
-              showFunctions: true,
-              showConstructors: true,
-              showFields: true,
-              showVariables: true,
-              showClasses: true,
-              showStructs: true,
-              showInterfaces: true,
-              showModules: true,
-              showProperties: true,
-              showEvents: true,
-              showOperators: true,
-              showUnits: true,
-              showValues: true,
-              showConstants: true,
-              showEnums: true,
-              showEnumMembers: true,
-              showKeywords: true,
-              showWords: true,
-              showColors: true,
-              showFiles: true,
-              showReferences: true,
-              showFolders: true,
-              showTypeParameters: true,
-              showSnippets: true,
-              showUsers: true,
-              showIssues: true,
-              filterGraceful: true,
-              maxVisibleSuggestions: 12,
-              insertMode: "insert"
-            },
-            // For JSX/HTML automatic tag closing
-            autoClosingTags: true,
-            // Auto closing settings
-            autoClosingBrackets: "always",
-            autoClosingQuotes: "always",
-            autoClosingOvertype: "always",
-            autoSurround: "languageDefined",
-            // Other helpful editor settings
-            formatOnPaste: true,
-            formatOnType: true,
-            autoIndent: "full",
-            bracketPairColorization: { enabled: true },
-            guides: { bracketPairs: true, indentation: true },
-            matchBrackets: "always",
-            renderWhitespace: "selection",
-            // Performance settings
-            folding: true,
-            foldingStrategy: "auto",
-            // Accessibility
-            accessibilitySupport: "auto"
+            // Problem highlighting settings
+            renderValidationDecorations: localProblemHighlighting ? "on" : "off",
+            // Only show errors and warnings if problem highlighting is active
+            onValidate: localProblemHighlighting ? undefined : () => []
           }}
         />
+        
+        {/* Problem highlight toggle button */}
+        <div 
+          className={`editor-problem-highlight-toggle ${localProblemHighlighting ? 'active' : ''}`} 
+          onClick={toggleProblemHighlighting}
+          title="Toggle Problem Highlighting"
+        >
+          <Code size={22} />
+        </div>
       </div>
       
       {contextMenu.visible && (

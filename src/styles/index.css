@@ -152,6 +152,12 @@ input[type="search"]:focus {
   color: var(--text-color);
   padding: 8px 16px;
   font-weight: 500;
+  font-size: 14px;
+  height: 38px;
+  min-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .select-folder-btn:hover {
@@ -354,6 +360,22 @@ input[type="search"]:focus {
   overflow: hidden;
   background-color: white;
   min-width: 0;
+}
+
+.full-height-editor {
+  height: 100vh; /* Take up full viewport height */
+  overflow: hidden;
+  position: relative;
+}
+
+.full-height-editor .code-editor-container {
+  height: 100%;
+  border-radius: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .content-header {
@@ -1187,17 +1209,23 @@ body.resizing .resize-handle {
 
 .toggle-browser-btn {
   margin-left: 8px;
-  background-color: var(--button-bg);
-  color: var(--button-text);
+  background-color: var(--background-color);
+  color: var(--text-color);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 8px 16px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  height: 38px;
+  min-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toggle-browser-btn:hover {
-  background-color: var(--button-hover-bg);
+  background-color: var(--hover-color);
 }
 
 .toggle-browser-btn.active {
@@ -1320,4 +1348,81 @@ body.resizing .resize-handle {
   height: 1px;
   background-color: var(--border-color);
   margin: 6px 0;
+}
+
+.full-height-editor {
+  height: calc(100vh - 60px); /* Adjust for header height */
+  overflow: hidden;
+  position: relative;
+}
+
+.full-height-editor .code-editor-container {
+  height: 100%;
+  border-radius: 0;
+}
+
+.full-height-editor .code-editor-header {
+  background-color: #252526;
+  border-bottom: 1px solid #333;
+  padding: 8px 12px;
+}
+
+/* Problem Highlight Toggle */
+.problem-highlight-toggle {
+  position: fixed;
+  bottom: 150px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  transition: all 0.2s ease;
+}
+
+.problem-highlight-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.problem-highlight-toggle.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.problem-highlight-toggle .tooltip {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.problem-highlight-toggle:hover .tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Problem highlighting styles */
+.highlight-problem {
+  background-color: rgba(255, 0, 0, 0.1);
+  border-bottom: 2px wavy rgba(255, 0, 0, 0.5);
+}
+
+.ace_editor.problem-highlighting-active .ace_error {
+  position: relative;
+  background-color: rgba(255, 0, 0, 0.1);
+  text-decoration: wavy underline rgba(255, 0, 0, 0.7);
 }

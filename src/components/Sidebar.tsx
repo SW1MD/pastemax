@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, MouseEvent } from "react";
 import { SidebarProps, TreeNode } from "../types/FileTypes";
 import SearchBar from "./SearchBar";
 import TreeItem from "./TreeItem";
@@ -21,6 +21,7 @@ const Sidebar = ({
   const [isTreeBuildingComplete, setIsTreeBuildingComplete] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [isResizing, setIsResizing] = useState(false);
+  const [selectedFilesKey, setSelectedFilesKey] = useState(0);
 
   // Min and max width constraints
   const MIN_SIDEBAR_WIDTH = 200;
@@ -278,6 +279,11 @@ const Sidebar = ({
   // The final tree to render, filtered and flattened
   const visibleTree = flattenTree(filterTree(fileTree, searchTerm));
 
+  // Force re-render when selectedFiles changes
+  useEffect(() => {
+    setSelectedFilesKey((prev: number) => prev + 1);
+  }, [selectedFiles]);
+
   return (
     <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
       <div className="sidebar-header">
@@ -308,7 +314,7 @@ const Sidebar = ({
             {visibleTree.length > 0 ? (
               visibleTree.map((node) => (
                 <TreeItem
-                  key={node.id}
+                  key={`${node.id}-${selectedFilesKey}`}
                   node={node}
                   selectedFiles={selectedFiles}
                   toggleFileSelection={toggleFileSelection}
