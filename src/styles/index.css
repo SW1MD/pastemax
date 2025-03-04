@@ -1001,38 +1001,44 @@ body.resizing .resize-handle {
 }
 
 .tab-close {
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: var(--secondary-color);
-  cursor: pointer;
-  opacity: 0.7;
-  transition: all 0.2s;
+  width: 16px !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  color: var(--secondary-color) !important;
+  cursor: pointer !important;
+  opacity: 0.7 !important;
+  transition: all 0.2s !important;
+  background: none !important;
+  border: none !important;
+  font-size: 16px !important;
+  padding: 0 !important;
+  margin-left: 4px !important;
 }
 
 .tab-close:hover {
-  background-color: var(--hover-color);
-  color: var(--text-color);
+  background-color: var(--hover-color) !important;
+  color: var(--text-color) !important;
+  opacity: 1 !important;
 }
 
 .tab-new {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 28px;
-  background-color: transparent;
-  border: none;
-  color: var(--secondary-color);
-  cursor: pointer;
-  flex-shrink: 0;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 28px !important;
+  background-color: transparent !important;
+  border: none !important;
+  color: var(--secondary-color) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
 }
 
 .tab-new:hover {
-  color: var(--text-color);
+  color: var(--text-color) !important;
 }
 
 /* Controls Bar */
@@ -1055,31 +1061,33 @@ body.resizing .resize-handle {
 }
 
 .web-browser-nav-btn {
-  background: none;
-  border: none;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  color: var(--icon-color);
-  cursor: pointer;
-  transition: all 0.2s;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: none !important;
+  border: none !important;
+  color: var(--icon-color) !important;
+  cursor: pointer !important;
+  border-radius: 4px !important;
+  transition: all 0.2s !important;
+  padding: 0 !important;
+  margin: 0 2px !important;
 }
 
 .web-browser-nav-btn:focus {
-  outline: none;
+  outline: none !important;
 }
 
 .web-browser-nav-btn:hover {
-  background-color: var(--hover-color);
-  color: var(--text-color);
+  background-color: var(--hover-color) !important;
+  color: var(--text-color) !important;
 }
 
 .web-browser-nav-btn:disabled {
-  color: var(--disabled-color);
-  cursor: default;
+  color: var(--disabled-color) !important;
+  cursor: default !important;
 }
 
 .web-browser-urlbar-container {
@@ -1099,13 +1107,13 @@ body.resizing .resize-handle {
 }
 
 .url-security-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  color: var(--secondary-color);
-  margin-right: 8px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--secondary-color) !important;
+  margin-right: 8px !important;
 }
 
 .web-browser-url-bar {
@@ -1126,22 +1134,22 @@ body.resizing .resize-handle {
 }
 
 .bookmark-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: none;
-  border: none;
-  color: var(--secondary-color);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: none !important;
+  border: none !important;
+  color: var(--secondary-color) !important;
+  cursor: pointer !important;
+  border-radius: 4px !important;
+  transition: all 0.2s !important;
 }
 
 .bookmark-button:hover {
-  color: var(--primary-color);
-  background-color: var(--hover-color);
+  color: var(--primary-color) !important;
+  background-color: var(--hover-color) !important;
 }
 
 .web-browser-actions {
@@ -1150,26 +1158,26 @@ body.resizing .resize-handle {
 }
 
 .web-browser-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: none;
-  border: none;
-  color: var(--icon-color);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: none !important;
+  border: none !important;
+  color: var(--icon-color) !important;
+  cursor: pointer !important;
+  border-radius: 4px !important;
+  transition: all 0.2s !important;
 }
 
 .web-browser-action-btn:focus {
-  outline: none;
+  outline: none !important;
 }
 
 .web-browser-action-btn:hover {
-  background-color: var(--hover-color);
-  color: var(--text-color);
+  background-color: var(--hover-color) !important;
+  color: var(--text-color) !important;
 }
 
 .web-browser-close-btn {
@@ -1184,6 +1192,7 @@ body.resizing .resize-handle {
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s;
+  padding: 0;
 }
 
 .web-browser-close-btn:focus {
@@ -1193,6 +1202,13 @@ body.resizing .resize-handle {
 .web-browser-close-btn:hover {
   background-color: var(--hover-color);
   color: var(--error-color);
+}
+
+.web-browser-close-btn svg {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  display: block;
 }
 
 /* Content Styles */
@@ -1272,7 +1288,12 @@ body.resizing .resize-handle {
 }
 
 .spin {
-  animation: spin 1s linear infinite;
+  animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Media queries for responsive layout */
@@ -1587,11 +1608,14 @@ body.resizing .resize-handle {
 .file-browser-action-btn:hover {
   background-color: var(--hover-color);
   border-color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 .file-browser-action-btn svg {
   width: 16px;
   height: 16px;
+  color: currentColor;
+  display: block;
 }
 
 .current-directory {
@@ -1727,9 +1751,23 @@ body.resizing .resize-handle {
   color: var(--icon-color);
 }
 
+.file-browser-item-icon svg {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  display: block;
+}
+
 .directory-icon {
   color: var(--primary-color);
   transition: transform 0.2s;
+}
+
+.directory-icon svg {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  display: block;
 }
 
 .file-icon {
@@ -2045,4 +2083,60 @@ body.resizing .resize-handle {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Fix for browser icons */
+.web-browser-nav-btn svg,
+.web-browser-action-btn svg,
+.web-browser-close-btn svg,
+.bookmark-button svg,
+.url-security-indicator svg,
+.tab-new svg {
+  width: 16px !important;
+  height: 16px !important;
+  color: currentColor !important;
+  display: block !important;
+  stroke: currentColor !important;
+  stroke-width: 2px !important;
+  fill: none !important;
+}
+
+.web-browser-nav-btn {
+  background: none !important;
+  border: none !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  color: var(--icon-color) !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  padding: 0 !important;
+  margin: 0 2px !important;
+}
+
+.web-browser-nav-btn:focus {
+  outline: none !important;
+}
+
+.web-browser-nav-btn:hover {
+  background-color: var(--hover-color) !important;
+  color: var(--text-color) !important;
+}
+
+.web-browser-nav-btn:disabled {
+  color: var(--disabled-color) !important;
+  cursor: default !important;
+}
+
+/* Fix for spinner animation */
+.spin {
+  animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
