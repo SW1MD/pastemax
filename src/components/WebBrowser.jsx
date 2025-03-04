@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
-import { RefreshCw, Home, ArrowLeft, ArrowRight, X, Star, Search, Menu, Plus } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { RefreshCw, Home, ArrowLeft, ArrowRight, X, Star, Search, Menu, Plus, Copy, ExternalLink } from "lucide-react";
+import ContextMenu from "./ContextMenu";
 
 // Default to our custom home page
 const DEFAULT_HOME_URL = window.electron 
@@ -16,8 +17,67 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
   const [pageTitle, setPageTitle] = useState("");
   const [favicon, setFavicon] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
   
   const webviewRef = useRef(null);
+  
+  // Context menu handlers
+  const handleContextMenu = useCallback((e) => {
+    // Only show context menu for the webview container, not including the controls
+    if (e.target.closest('.browser-controls')) return;
+    
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY
+    });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  }, []);
+
+  // Open URL in default browser
+  const openInDefaultBrowser = useCallback(() => {
+    if (window.electron) {
+      window.electron.openExternal(url);
+    } else {
+      window.open(url, '_blank');
+    }
+    closeContextMenu();
+  }, [url]);
+
+  // Copy current URL
+  const copyCurrentUrl = useCallback(() => {
+    navigator.clipboard.writeText(url);
+    closeContextMenu();
+  }, [url]);
+
+  // Menu items for the context menu
+  const menuItems = [
+    {
+      icon: <RefreshCw size={16} />,
+      label: "Refresh page",
+      onClick: () => {
+        if (webviewRef.current) {
+          webviewRef.current.reload();
+        }
+        closeContextMenu();
+      }
+    },
+    {
+      icon: <Copy size={16} />,
+      label: "Copy URL",
+      onClick: copyCurrentUrl
+    },
+    { divider: true },
+    {
+      icon: <ExternalLink size={16} />,
+      label: "Open in default browser",
+      onClick: openInDefaultBrowser
+    }
+  ];
   
   const handleUrlChange = (e) => {
     setUrl(e.target.value);

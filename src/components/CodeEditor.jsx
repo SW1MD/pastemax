@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Editor from "@monaco-editor/react";
-import { X, Save, Info } from "lucide-react";
+import { X, Save, Info, Copy, ExternalLink, DownloadCloud } from "lucide-react";
+import ContextMenu from "./ContextMenu";
 
 const CodeEditor = ({ file, onClose }) => {
   // Always declare hooks at the top level, before any conditional returns
   const [content, setContent] = useState(file ? file.content : '');
   const [isSaved, setIsSaved] = useState(true);
   const [showTip, setShowTip] = useState(true);
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
   
   // Hide the tip after 8 seconds
   useEffect(() => {
@@ -18,7 +20,69 @@ const CodeEditor = ({ file, onClose }) => {
     }
   }, [showTip]);
   
+  // Context menu handlers
+  const handleContextMenu = useCallback((e) => {
+    if (e.target.closest(".monaco-editor")) {
+      e.preventDefault();
+      setContextMenu({ 
+        visible: true, 
+        x: e.clientX, 
+        y: e.clientY 
+      });
+    }
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu({ ...contextMenu, visible: false });
+  }, [contextMenu]);
+
+  // Download the file content
+  const downloadFile = useCallback(() => {
+    if (!file) return;
+    const element = document.createElement("a");
+    const fileBlob = new Blob([content], { type: "text/plain" });
+    element.href = URL.createObjectURL(fileBlob);
+    element.download = file.name;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    closeContextMenu();
+  }, [content, file, closeContextMenu]);
+
+  // Open in system default app (only works in Electron)
+  const openInDefaultApp = useCallback(() => {
+    if (!file) return;
+    if (window.electron) {
+      window.electron.openFileInDefaultApp(file.path);
+    }
+    closeContextMenu();
+  }, [file, closeContextMenu]);
+  
   if (!file) return null;
+
+  // Context menu items
+  const menuItems = [
+    {
+      icon: <Copy size={16} />,
+      label: "Copy all content",
+      onClick: () => {
+        navigator.clipboard.writeText(content);
+        closeContextMenu();
+      }
+    },
+    {
+      icon: <DownloadCloud size={16} />,
+      label: "Download file",
+      onClick: downloadFile
+    },
+    { divider: true },
+    {
+      icon: <ExternalLink size={16} />,
+      label: "Open in default app",
+      onClick: openInDefaultApp,
+      disabled: !window.electron
+    }
+  ];
 
   // Define language for editor based on file extension
   const getLanguage = (filename) => {
@@ -279,7 +343,7 @@ const CodeEditor = ({ file, onClose }) => {
   };
 
   return (
-    <div className="code-editor-container">
+    <div className="code-editor-container" onContextMenu={handleContextMenu}>
       <div className="code-editor-header">
         <div className="code-editor-filename">{file.name}</div>
         <div className="code-editor-controls">
@@ -382,6 +446,15 @@ const CodeEditor = ({ file, onClose }) => {
           }}
         />
       </div>
+      
+      {contextMenu.visible && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={menuItems}
+          onClose={closeContextMenu}
+        />
+      )}
     </div>
   );
 };
