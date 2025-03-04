@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, session } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
@@ -110,12 +110,44 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
+      webviewTag: true, // Enable webview tag support
+      webSecurity: true, // Keep security on
+      allowRunningInsecureContent: false,
       devTools: {
         // Add these settings to prevent Autofill warnings
         isDevToolsExtension: false,
         htmlFullscreen: false,
       },
     },
+  });
+
+  // Configure session permissions
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src 'self' * 'unsafe-inline' 'unsafe-eval' data: blob:"]
+      }
+    });
+  });
+
+  // Allow webview to make requests to Google and other domains
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    callback({ requestHeaders: details.requestHeaders });
+  });
+
+  // Set custom CSP header to allow webview content to be loaded
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    if (details.responseHeaders['Content-Security-Policy']) {
+      delete details.responseHeaders['Content-Security-Policy'];
+    }
+    
+    callback({ 
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src 'self' * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-src *"]
+      } 
+    });
   });
 
   // In development, load from Vite dev server

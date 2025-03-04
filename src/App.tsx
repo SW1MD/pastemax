@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
+import WebBrowser from "./components/WebBrowser";
 import { FileData } from "./types/FileTypes";
 
 // Access the electron API from the window object
@@ -27,6 +28,8 @@ const STORAGE_KEYS = {
   SORT_ORDER: "pastemax-sort-order",
   SEARCH_TERM: "pastemax-search-term",
   EXPANDED_NODES: "pastemax-expanded-nodes",
+  BROWSER_VISIBLE: "pastemax-browser-visible",
+  BROWSER_URL: "pastemax-browser-url",
 };
 
 const App = () => {
@@ -35,6 +38,8 @@ const App = () => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
+  const savedBrowserVisible = localStorage.getItem(STORAGE_KEYS.BROWSER_VISIBLE);
+  const savedBrowserUrl = localStorage.getItem(STORAGE_KEYS.BROWSER_URL);
 
   const [selectedFolder, setSelectedFolder] = useState<string | null>(
     savedFolder,
@@ -64,6 +69,14 @@ const App = () => {
 
   // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
+
+  // Add new state for browser
+  const [browserVisible, setBrowserVisible] = useState<boolean>(
+    savedBrowserVisible ? savedBrowserVisible === "true" : false
+  );
+  const [browserUrl, setBrowserUrl] = useState<string>(
+    savedBrowserUrl || "https://www.google.com"
+  );
 
   // Load expanded nodes state from localStorage
   useEffect(() => {
@@ -404,6 +417,27 @@ const App = () => {
     });
   };
 
+  // Update localStorage when browser state changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.BROWSER_VISIBLE, browserVisible.toString());
+  }, [browserVisible]);
+
+  useEffect(() => {
+    if (browserUrl) {
+      localStorage.setItem(STORAGE_KEYS.BROWSER_URL, browserUrl);
+    }
+  }, [browserUrl]);
+
+  // Toggle browser visibility
+  const toggleBrowser = () => {
+    setBrowserVisible(!browserVisible);
+  };
+
+  // Update browser URL
+  const handleBrowserUrlChange = (newUrl) => {
+    setBrowserUrl(newUrl);
+  };
+
   return (
     <div className="app-container">
       <div className="header">
@@ -421,6 +455,13 @@ const App = () => {
           >
             Select Folder
           </button>
+          <button
+            className={`toggle-browser-btn ${browserVisible ? 'active' : ''}`}
+            onClick={toggleBrowser}
+            title={browserVisible ? "Hide Browser" : "Show Browser"}
+          >
+            {browserVisible ? "Hide Browser" : "Show Browser"}
+          </button>
         </div>
       </div>
 
@@ -436,83 +477,94 @@ const App = () => {
       )}
 
       {selectedFolder && (
-        <div className="main-content">
-          <Sidebar
-            selectedFolder={selectedFolder}
-            openFolder={openFolder}
-            allFiles={allFiles}
-            selectedFiles={selectedFiles}
-            toggleFileSelection={toggleFileSelection}
-            toggleFolderSelection={toggleFolderSelection}
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            selectAllFiles={selectAllFiles}
-            deselectAllFiles={deselectAllFiles}
-            expandedNodes={expandedNodes}
-            toggleExpanded={toggleExpanded}
-          />
-          <div className="content-area">
-            <div className="content-header">
-              <div className="content-title">
-                {viewedFile ? "Viewing File" : "Selected Files"}
-              </div>
-              <div className="content-actions">
-                {!viewedFile && (
-                  <>
-                    <div className="sort-dropdown">
-                      <button
-                        className="sort-dropdown-button"
-                        onClick={toggleSortDropdown}
-                      >
-                        Sort:{" "}
-                        {sortOptions.find((opt) => opt.value === sortOrder)
-                          ?.label || sortOrder}
-                      </button>
-                      {sortDropdownOpen && (
-                        <div className="sort-options">
-                          {sortOptions.map((option) => (
-                            <div
-                              key={option.value}
-                              className={`sort-option ${
-                                sortOrder === option.value ? "active" : ""
-                              }`}
-                              onClick={() => handleSortChange(option.value)}
-                            >
-                              {option.label}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="file-stats">
-                      {selectedFiles.length} files | ~
-                      {calculateTotalTokens().toLocaleString()} tokens
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <FileList
-              files={displayedFiles}
+        <div className={`main-content ${browserVisible ? 'split-view' : ''}`}>
+          <div className="pastemax-container">
+            <Sidebar
+              selectedFolder={selectedFolder}
+              openFolder={openFolder}
+              allFiles={allFiles}
               selectedFiles={selectedFiles}
               toggleFileSelection={toggleFileSelection}
-              viewedFile={viewedFile}
-              onViewFile={(file) => setViewedFile(file)}
-              onCloseView={() => setViewedFile(null)}
+              toggleFolderSelection={toggleFolderSelection}
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              selectAllFiles={selectAllFiles}
+              deselectAllFiles={deselectAllFiles}
+              expandedNodes={expandedNodes}
+              toggleExpanded={toggleExpanded}
             />
-
-            {!viewedFile && (
-              <div className="copy-button-container">
-                <CopyButton
-                  text={getSelectedFilesContent()}
-                  className="primary full-width"
-                >
-                  <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
-                </CopyButton>
+            <div className="content-area">
+              <div className="content-header">
+                <div className="content-title">
+                  {viewedFile ? "Viewing File" : "Selected Files"}
+                </div>
+                <div className="content-actions">
+                  {!viewedFile && (
+                    <>
+                      <div className="sort-dropdown">
+                        <button
+                          className="sort-dropdown-button"
+                          onClick={toggleSortDropdown}
+                        >
+                          Sort:{" "}
+                          {sortOptions.find((opt) => opt.value === sortOrder)
+                            ?.label || sortOrder}
+                        </button>
+                        {sortDropdownOpen && (
+                          <div className="sort-options">
+                            {sortOptions.map((option) => (
+                              <div
+                                key={option.value}
+                                className={`sort-option ${
+                                  sortOrder === option.value ? "active" : ""
+                                }`}
+                                onClick={() => handleSortChange(option.value)}
+                              >
+                                {option.label}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="file-stats">
+                        {selectedFiles.length} files | ~
+                        {calculateTotalTokens().toLocaleString()} tokens
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            )}
+
+              <FileList
+                files={displayedFiles}
+                selectedFiles={selectedFiles}
+                toggleFileSelection={toggleFileSelection}
+                viewedFile={viewedFile}
+                onViewFile={(file) => setViewedFile(file)}
+                onCloseView={() => setViewedFile(null)}
+              />
+
+              {!viewedFile && (
+                <div className="copy-button-container">
+                  <CopyButton
+                    text={getSelectedFilesContent()}
+                    className="primary full-width"
+                  >
+                    <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
+                  </CopyButton>
+                </div>
+              )}
+            </div>
           </div>
+          
+          {browserVisible && (
+            <div className="browser-container">
+              <WebBrowser 
+                initialUrl={browserUrl}
+                onUrlChange={handleBrowserUrlChange}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

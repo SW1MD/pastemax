@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
+import WebBrowser from "./components/WebBrowser";
+import ResizeHandle from "./components/ResizeHandle";
+import { FileData } from "./types/FileTypes";
 
 // Keys for localStorage
 const STORAGE_KEYS = {
@@ -10,6 +13,8 @@ const STORAGE_KEYS = {
   SORT_ORDER: "pastemax-sort-order",
   SEARCH_TERM: "pastemax-search-term",
   EXPANDED_NODES: "pastemax-expanded-nodes",
+  BROWSER_VISIBLE: "pastemax-browser-visible",
+  BROWSER_URL: "pastemax-browser-url",
 };
 
 const App = () => {
@@ -18,6 +23,8 @@ const App = () => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
+  const savedBrowserVisible = localStorage.getItem(STORAGE_KEYS.BROWSER_VISIBLE);
+  const savedBrowserUrl = localStorage.getItem(STORAGE_KEYS.BROWSER_URL);
 
   const [selectedFolder, setSelectedFolder] = useState(savedFolder);
   const [allFiles, setAllFiles] = useState([]);
@@ -38,6 +45,14 @@ const App = () => {
 
   // State for sort dropdown
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+
+  // Add new state for browser
+  const [browserVisible, setBrowserVisible] = useState(
+    savedBrowserVisible ? savedBrowserVisible === "true" : false
+  );
+  const [browserUrl, setBrowserUrl] = useState(
+    savedBrowserUrl || "https://www.google.com"
+  );
 
   // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
@@ -392,6 +407,151 @@ const App = () => {
     });
   };
 
+  // Update localStorage when browser state changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.BROWSER_VISIBLE, browserVisible.toString());
+  }, [browserVisible]);
+
+  useEffect(() => {
+    if (browserUrl) {
+      localStorage.setItem(STORAGE_KEYS.BROWSER_URL, browserUrl);
+    }
+  }, [browserUrl]);
+
+  // Toggle browser visibility
+  const toggleBrowser = () => {
+    setBrowserVisible(!browserVisible);
+  };
+
+  // Update browser URL
+  const handleBrowserUrlChange = (newUrl) => {
+    setBrowserUrl(newUrl);
+  };
+
+  // Add reference for the container and state for panel sizes
+  const splitContainerRef = useRef(null);
+  const resizeHandleRef = useRef(null);
+  const [panelSizes, setPanelSizes] = useState({
+    pastemax: 50, // Default to 50% width
+    browser: 50   // Default to 50% width
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const pasteSizeRef = useRef(50); // Keep reference to avoid stale closures
+
+  // Memoize handlers to avoid recreation on each render
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    document.body.classList.add('resizing');
+    setIsResizing(true);
+    pasteSizeRef.current = panelSizes.pastemax;
+    
+    // Capture the initial position of the mouse/touch and handle
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    resizeHandleRef.current = {
+      startX: clientX,
+      startPasteMaxWidth: pasteSizeRef.current
+    };
+  }, [panelSizes.pastemax]);
+
+  const handleResizeMove = useCallback((e) => {
+    if (!isResizing || !splitContainerRef.current || !resizeHandleRef.current) return;
+    
+    // Get the container and its width
+    const container = splitContainerRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    
+    // Calculate the change in position
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const deltaX = clientX - resizeHandleRef.current.startX;
+    const deltaPercent = (deltaX / containerWidth) * 100;
+    
+    // Calculate new width percentages
+    const minWidth = 20; // Minimum 20% width for each panel
+    let pasteMaxPercent = resizeHandleRef.current.startPasteMaxWidth + deltaPercent;
+    
+    // Enforce minimum widths
+    pasteMaxPercent = Math.max(minWidth, Math.min(pasteMaxPercent, 100 - minWidth));
+    
+    // Update the width with the calculated value
+    pasteSizeRef.current = pasteMaxPercent;
+    
+    // Use requestAnimationFrame to throttle updates for better performance
+    requestAnimationFrame(() => {
+      setPanelSizes({
+        pastemax: pasteMaxPercent,
+        browser: 100 - pasteMaxPercent
+      });
+    });
+  }, [isResizing]);
+
+  const handleResizeEnd = useCallback(() => {
+    document.body.classList.remove('resizing');
+    setIsResizing(false);
+    resizeHandleRef.current = null;
+  }, []);
+
+  // Set up event listeners for resize more efficiently
+  useEffect(() => {
+    const handleMoveEvent = (e) => {
+      if (isResizing) {
+        e.preventDefault();
+        handleResizeMove(e);
+      }
+    };
+    
+    const handleEndEvent = () => {
+      if (isResizing) {
+        handleResizeEnd();
+      }
+    };
+    
+    if (isResizing) {
+      // Mouse events
+      window.addEventListener('mousemove', handleMoveEvent, { passive: false });
+      window.addEventListener('mouseup', handleEndEvent);
+      
+      // Touch events for mobile
+      window.addEventListener('touchmove', handleMoveEvent, { passive: false });
+      window.addEventListener('touchend', handleEndEvent);
+      window.addEventListener('touchcancel', handleEndEvent);
+      
+      // Also handle cases where mouse leaves the window
+      window.addEventListener('mouseleave', handleEndEvent);
+    }
+    
+    return () => {
+      // Clean up all event listeners
+      window.removeEventListener('mousemove', handleMoveEvent);
+      window.removeEventListener('mouseup', handleEndEvent);
+      window.removeEventListener('mouseleave', handleEndEvent);
+      window.removeEventListener('touchmove', handleMoveEvent);
+      window.removeEventListener('touchend', handleEndEvent);
+      window.removeEventListener('touchcancel', handleEndEvent);
+    };
+  }, [isResizing, handleResizeMove, handleResizeEnd]);
+
+  // Save panel sizes in localStorage when they change
+  useEffect(() => {
+    if (!isResizing) {
+      localStorage.setItem('pastemax-panel-sizes', JSON.stringify(panelSizes));
+    }
+  }, [panelSizes, isResizing]);
+  
+  // Load saved panel sizes on initial render
+  useEffect(() => {
+    const savedSizes = localStorage.getItem('pastemax-panel-sizes');
+    if (savedSizes) {
+      try {
+        const parsedSizes = JSON.parse(savedSizes);
+        setPanelSizes(parsedSizes);
+        pasteSizeRef.current = parsedSizes.pastemax;
+      } catch (e) {
+        console.error('Error parsing saved panel sizes', e);
+      }
+    }
+  }, []);
+
   return (
     <div className="app-container">
       <div className="header">
@@ -409,6 +569,13 @@ const App = () => {
           >
             Select Folder
           </button>
+          <button
+            className={`toggle-browser-btn ${browserVisible ? 'active' : ''}`}
+            onClick={toggleBrowser}
+            title={browserVisible ? "Hide Browser" : "Show Browser"}
+          >
+            {browserVisible ? "Hide Browser" : "Show Browser"}
+          </button>
         </div>
       </div>
 
@@ -424,83 +591,107 @@ const App = () => {
       )}
 
       {selectedFolder && (
-        <div className="main-content">
-          <Sidebar
-            selectedFolder={selectedFolder}
-            openFolder={openFolder}
-            allFiles={allFiles}
-            selectedFiles={selectedFiles}
-            toggleFileSelection={toggleFileSelection}
-            toggleFolderSelection={toggleFolderSelection}
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            selectAllFiles={selectAllFiles}
-            deselectAllFiles={deselectAllFiles}
-            expandedNodes={expandedNodes}
-            toggleExpanded={toggleExpanded}
-          />
-          <div className="content-area">
-            <div className="content-header">
-              <div className="content-title">
-                {viewedFile ? "Viewing File" : "Selected Files"}
-              </div>
-              <div className="content-actions">
-                {!viewedFile && (
-                  <>
-                    <div className="sort-dropdown">
-                      <button
-                        className="sort-dropdown-button"
-                        onClick={toggleSortDropdown}
-                      >
-                        Sort:{" "}
-                        {sortOptions.find((opt) => opt.value === sortOrder)
-                          ?.label || sortOrder}
-                      </button>
-                      {sortDropdownOpen && (
-                        <div className="sort-options">
-                          {sortOptions.map((option) => (
-                            <div
-                              key={option.value}
-                              className={`sort-option ${
-                                sortOrder === option.value ? "active" : ""
-                              }`}
-                              onClick={() => handleSortChange(option.value)}
-                            >
-                              {option.label}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="file-stats">
-                      {selectedFiles.length} files | ~
-                      {calculateTotalTokens().toLocaleString()} tokens
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <FileList
-              files={displayedFiles}
+        <div 
+          className={`main-content ${browserVisible ? 'split-view' : ''}`}
+          ref={splitContainerRef}
+        >
+          <div 
+            className={`pastemax-container ${!browserVisible ? 'full-width' : ''}`}
+            style={browserVisible ? { width: `${panelSizes.pastemax}%` } : {}}
+          >
+            <Sidebar
+              selectedFolder={selectedFolder}
+              openFolder={openFolder}
+              allFiles={allFiles}
               selectedFiles={selectedFiles}
               toggleFileSelection={toggleFileSelection}
-              viewedFile={viewedFile}
-              onViewFile={(file) => setViewedFile(file)}
-              onCloseView={() => setViewedFile(null)}
+              toggleFolderSelection={toggleFolderSelection}
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              selectAllFiles={selectAllFiles}
+              deselectAllFiles={deselectAllFiles}
+              expandedNodes={expandedNodes}
+              toggleExpanded={toggleExpanded}
             />
-
-            {!viewedFile && (
-              <div className="copy-button-container">
-                <CopyButton
-                  text={getSelectedFilesContent()}
-                  className="primary full-width"
-                >
-                  <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
-                </CopyButton>
+            <div className="content-area">
+              <div className="content-header">
+                <div className="content-title">
+                  {viewedFile ? "Viewing File" : "Selected Files"}
+                </div>
+                <div className="content-actions">
+                  {!viewedFile && (
+                    <>
+                      <div className="sort-dropdown">
+                        <button
+                          className="sort-dropdown-button"
+                          onClick={toggleSortDropdown}
+                        >
+                          Sort:{" "}
+                          {sortOptions.find((opt) => opt.value === sortOrder)
+                            ?.label || sortOrder}
+                        </button>
+                        {sortDropdownOpen && (
+                          <div className="sort-options">
+                            {sortOptions.map((option) => (
+                              <div
+                                key={option.value}
+                                className={`sort-option ${
+                                  sortOrder === option.value ? "active" : ""
+                                }`}
+                                onClick={() => handleSortChange(option.value)}
+                              >
+                                {option.label}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="file-stats">
+                        {selectedFiles.length} files | ~
+                        {calculateTotalTokens().toLocaleString()} tokens
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            )}
+
+              <FileList
+                files={displayedFiles}
+                selectedFiles={selectedFiles}
+                toggleFileSelection={toggleFileSelection}
+                viewedFile={viewedFile}
+                onViewFile={(file) => setViewedFile(file)}
+                onCloseView={() => setViewedFile(null)}
+              />
+
+              {!viewedFile && (
+                <div className="copy-button-container">
+                  <CopyButton
+                    text={getSelectedFilesContent()}
+                    className="primary full-width"
+                  >
+                    <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
+                  </CopyButton>
+                </div>
+              )}
+            </div>
           </div>
+          
+          {browserVisible && (
+            <>
+              <ResizeHandle onResizeStart={handleResizeStart} />
+              
+              <div 
+                className="browser-container"
+                style={{ width: `${panelSizes.browser}%` }}
+              >
+                <WebBrowser 
+                  initialUrl={browserUrl}
+                  onUrlChange={handleBrowserUrlChange}
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
