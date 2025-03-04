@@ -58,7 +58,9 @@ const App = () => {
   // Add new state for browser
   const [browserVisible, setBrowserVisible] = useState(false);
   const [browserUrl, setBrowserUrl] = useState(
-    savedBrowserUrl || "https://www.google.com"
+    window.electron 
+      ? "file://" + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + "/browser-home.html"
+      : "/browser-home.html"
   );
   const [problemHighlightingActive, setProblemHighlightingActive] = useState(
     savedProblemHighlight === "true"
@@ -633,8 +635,9 @@ const App = () => {
     }
   }, [selectedFiles, checkTokenWarning]);
 
-  // Clear browser visibility in localStorage on load
+  // Clear browser visibility and URL in localStorage on load
   useEffect(() => {
+    localStorage.removeItem(STORAGE_KEYS.BROWSER_URL);
     localStorage.setItem(STORAGE_KEYS.BROWSER_VISIBLE, "false");
   }, []);
 
