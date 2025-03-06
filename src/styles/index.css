@@ -521,14 +521,14 @@ input[type="search"]:focus {
 }
 
 .file-card {
-  background-color: var(--card-background);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 12px;
-  cursor: pointer;
+  margin-bottom: 12px;
+  background-color: var(--card-background);
   transition: all 0.2s ease;
   position: relative;
-  box-shadow: 0 1px 3px var(--shadow-color);
+  overflow: hidden;
 }
 
 .file-card:hover {
@@ -552,6 +552,7 @@ input[type="search"]:focus {
   display: flex;
   align-items: center;
   margin-bottom: 8px;
+  cursor: pointer;
 }
 
 .file-card-icon {
@@ -2805,4 +2806,29 @@ body.resizing .resize-handle {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* Add styles for the expanded file card and code preview */
+.file-card.expanded {
+  max-height: none;
+  border-color: var(--primary-color);
+}
+
+.file-card-preview {
+  margin-top: 12px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.file-card-preview .monaco-editor {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Make sure the Monaco editor container takes full height */
+.monaco-editor {
+  height: 100% !important;
 }

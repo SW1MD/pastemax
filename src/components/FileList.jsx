@@ -100,6 +100,23 @@ const FileList = ({
     }
   };
 
+  // Add a function to handle saving files
+  const handleSaveFile = async (filePath, content) => {
+    try {
+      // Check if we have access to the electron API
+      if (window.electron && window.electron.writeFile) {
+        await window.electron.writeFile(filePath, content);
+        return true;
+      } else {
+        console.error("Electron API not available for file saving");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error saving file:", error);
+      return false;
+    }
+  };
+
   // If a file is being viewed, show the code editor instead of the file list
   if (viewedFile) {
     return (
@@ -108,6 +125,7 @@ const FileList = ({
           filePath={viewedFile.path}
           content={viewedFile.content}
           onClose={onCloseView}
+          onSave={handleSaveFile}
           readOnly={false}
           problemHighlightingActive={problemHighlightingActive}
         />
@@ -130,6 +148,7 @@ const FileList = ({
                 isSelected={true} // All displayed files are selected
                 toggleSelection={toggleFileSelection}
                 onViewFile={handleViewFile}  // Pass our enhanced handler
+                problemHighlightingActive={problemHighlightingActive}
               />
             ))}
           </div>

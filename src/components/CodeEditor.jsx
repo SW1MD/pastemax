@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Copy, Download, Settings, Code, FileText, Check, ChevronLeft, ChevronRight, Home, Folder } from 'lucide-react';
+import { Editor } from '@monaco-editor/react';
 
 const CodeEditor = ({ 
   filePath, 
@@ -7,9 +8,10 @@ const CodeEditor = ({
   onSave, 
   onClose,
   readOnly = false,
-  theme = 'github',
+  theme = 'auto',
   onNavigate = null,
-  fileHistory = []
+  fileHistory = [],
+  problemHighlightingActive = false
 }) => {
   const [editorContent, setEditorContent] = useState(content || '');
   const [fileName, setFileName] = useState('');
@@ -24,15 +26,57 @@ const CodeEditor = ({
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [fileBreadcrumbs, setFileBreadcrumbs] = useState([]);
+  const [currentTheme, setCurrentTheme] = useState(theme);
   
   const editorRef = useRef(null);
   const lineNumbersRef = useRef(null);
   
-  // Determine file type and set appropriate editor mode
+  // Detect system theme preference when theme is set to 'auto'
   useEffect(() => {
-    if (filePath) {
+    if (theme === 'auto') {
+      const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      const updateTheme = (e) => {
+        setCurrentTheme(e.matches ? 'dark' : 'github');
+      };
+      
+      // Set initial theme
+      updateTheme(darkModeMediaQuery);
+      
+      // Listen for changes
+      darkModeMediaQuery.addEventListener('change', updateTheme);
+      
+      return () => {
+        darkModeMediaQuery.removeEventListener('change', updateTheme);
+      };
+    } else {
+      setCurrentTheme(theme);
+    }
+  }, [theme]);
+  
+  // Add a compatibility layer for different prop formats
+  useEffect(() => {
+    // If we receive a file object instead of separate props
+    if (typeof filePath === 'object' && filePath !== null) {
+      const file = filePath;
+      setFileName(file.name || '');
+      setEditorContent(file.content || '');
+      
+      // Extract file type from name
+      if (file.name) {
+        const extension = file.name.split('.').pop().toLowerCase();
+        setFileType(extension);
+      }
+    } else if (typeof filePath === 'string') {
+      // Extract filename from path
       const name = filePath.split('/').pop();
       setFileName(name);
+      
+      // Extract file type from name
+      if (name) {
+        const extension = name.split('.').pop().toLowerCase();
+        setFileType(extension);
+      }
       
       // Create breadcrumbs from file path
       const pathParts = filePath.split('/');
@@ -48,10 +92,6 @@ const CodeEditor = ({
       });
       
       setFileBreadcrumbs(breadcrumbs);
-      
-      // Determine file type
-      const extension = name.split('.').pop().toLowerCase();
-      setFileType(extension);
       
       // Update history index if this file is in history
       const index = fileHistory.findIndex(f => f === filePath);
@@ -82,6 +122,7 @@ const CodeEditor = ({
     }
   };
   
+  // Handle text changes in the editor
   const handleChange = (e) => {
     const newContent = e.target.value;
     setEditorContent(newContent);
@@ -89,160 +130,160 @@ const CodeEditor = ({
     updateLineCount(newContent);
   };
   
-  const handleSave = async () => {
-    if (!onSave || readOnly) return;
+  // Determine file language for Monaco editor
+  const getLanguage = () => {
+    const languageMap = {
+      'js': 'javascript',
+      'jsx': 'javascript',
+      'ts': 'typescript',
+      'tsx': 'typescript',
+      'html': 'html',
+      'css': 'css',
+      'json': 'json',
+      'md': 'markdown',
+      'py': 'python',
+      'java': 'java',
+      'c': 'c',
+      'cpp': 'cpp',
+      'cs': 'csharp',
+      'php': 'php',
+      'rb': 'ruby',
+      'go': 'go',
+      'rs': 'rust',
+      'sh': 'shell',
+      'sql': 'sql',
+      'yaml': 'yaml',
+      'yml': 'yaml',
+      'xml': 'xml',
+      'dockerfile': 'dockerfile'
+    };
     
-    setIsSaving(true);
+    return languageMap[fileType.toLowerCase()] || 'plaintext';
+  };
+  
+  // Monaco editor options
+  const getEditorOptions = () => {
+    return {
+      fontSize: fontSize,
+      fontFamily: "'Fira Code', Consolas, 'Courier New', monospace",
+      lineNumbers: 'on',
+      scrollBeyondLastLine: false,
+      minimap: { enabled: false },
+      lineHeight: 1.5,
+      tabSize: tabSize,
+      readOnly: readOnly,
+      automaticLayout: true,
+      scrollbar: {
+        vertical: 'visible',
+        horizontal: 'visible',
+      }
+    };
+  };
+  
+  // Handle editor mount
+  const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor;
+    
+    // Set the line count based on the content
+    setLineCount(editor.getModel().getLineCount());
+    
+    // Add key binding for saving
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      handleSave();
+    });
+    
+    // Track cursor position changes
+    editor.onDidChangeCursorPosition((e) => {
+      setCursorPosition({
+        line: e.position.lineNumber,
+        column: e.position.column
+      });
+    });
+    
+    // Track content changes
+    editor.onDidChangeModelContent(() => {
+      setIsModified(true);
+      setLineCount(editor.getModel().getLineCount());
+    });
+  };
+  
+  // Save file content
+  const handleSave = async () => {
+    if (!onSave || !isModified) return;
+    
     try {
-      await onSave(editorContent);
+      setIsSaving(true);
+      await onSave(filePath, editorContent);
       setIsModified(false);
-      
-      // Show success message
       setShowSaveSuccess(true);
+      
+      // Hide success message after 3 seconds
       setTimeout(() => {
         setShowSaveSuccess(false);
-      }, 2000);
+      }, 3000);
     } catch (error) {
-      console.error('Error saving file:', error);
+      console.error("Error saving file:", error);
+      // TODO: Show error message
     } finally {
       setIsSaving(false);
     }
   };
   
-  const handleCopy = () => {
-    navigator.clipboard.writeText(editorContent);
-    
-    // Show feedback
-    const tempShowSuccess = showSaveSuccess;
-    setShowSaveSuccess(true);
-    setTimeout(() => {
-      setShowSaveSuccess(tempShowSuccess);
-    }, 1000);
-  };
-  
-  const handleDownload = () => {
-    const blob = new Blob([editorContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName || 'download.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-  
-  const toggleSettings = () => {
-    setShowSettings(!showSettings);
-  };
-  
-  // Handle tab key in textarea
-  const handleKeyDown = (e) => {
-    // Save with Ctrl+S
-    if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleSave();
-      return;
-    }
-    
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const start = e.target.selectionStart;
-      const end = e.target.selectionEnd;
-      
-      // Insert tab at cursor position
-      const newValue = editorContent.substring(0, start) + 
-                      ' '.repeat(tabSize) + 
-                      editorContent.substring(end);
-      
-      setEditorContent(newValue);
-      updateLineCount(newValue);
-      
-      // Move cursor after the inserted tab
-      setTimeout(() => {
-        e.target.selectionStart = e.target.selectionEnd = start + tabSize;
-      }, 0);
-      
-      setIsModified(true);
-    }
-  };
-  
-  // Track cursor position
-  const handleCursorMove = (e) => {
-    const textarea = e.target;
-    const value = textarea.value;
-    
-    const cursorPos = textarea.selectionStart;
-    let lineNumber = 1;
-    let columnNumber = 1;
-    
-    // Count newlines before cursor position
-    for (let i = 0; i < cursorPos; i++) {
-      if (value[i] === '\n') {
-        lineNumber++;
-        columnNumber = 1;
-      } else {
-        columnNumber++;
-      }
-    }
-    
-    setCursorPosition({ line: lineNumber, column: columnNumber });
-  };
-  
-  // Initialize line numbers on mount
-  useEffect(() => {
-    updateLineCount(editorContent);
-  }, []);
-  
-  // Sync scroll between textarea and line numbers
-  const handleScroll = (e) => {
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = e.target.scrollTop;
-    }
-  };
-  
-  // Navigation functions
+  // Navigate back in file history
   const navigateBack = () => {
     if (historyIndex > 0 && onNavigate) {
       onNavigate(fileHistory[historyIndex - 1]);
     }
   };
   
+  // Navigate forward in file history
   const navigateForward = () => {
     if (historyIndex < fileHistory.length - 1 && onNavigate) {
       onNavigate(fileHistory[historyIndex + 1]);
     }
   };
   
-  const navigateToParentFolder = () => {
-    if (filePath && onNavigate) {
-      const parentPath = filePath.substring(0, filePath.lastIndexOf('/'));
-      if (parentPath) {
-        onNavigate(parentPath, true); // true indicates it's a folder
-      }
+  // Navigate to a specific breadcrumb
+  const navigateToBreadcrumb = (path) => {
+    if (onNavigate) {
+      onNavigate(path);
     }
   };
   
-  const navigateToBreadcrumb = (path) => {
-    if (onNavigate) {
-      const isFolder = !path.includes('.');
-      onNavigate(path, isFolder);
+  // Navigate to parent folder
+  const navigateToParentFolder = () => {
+    if (filePath && onNavigate) {
+      const pathParts = filePath.split('/');
+      pathParts.pop(); // Remove the file name
+      const parentPath = pathParts.join('/');
+      onNavigate(parentPath);
     }
   };
-
-  // Add a compatibility layer for different prop formats
-  useEffect(() => {
-    // If we receive a file object instead of separate props
-    if (typeof filePath === 'object' && filePath !== null) {
-      const file = filePath;
-      setFileName(file.name || '');
-      setEditorContent(file.content || '');
-      // Update other state as needed
-    }
-  }, [filePath]);
+  
+  // Toggle settings panel
+  const toggleSettings = () => {
+    setShowSettings(!showSettings);
+  };
+  
+  // Download file
+  const handleDownload = () => {
+    const element = document.createElement('a');
+    const file = new Blob([editorContent], {type: 'text/plain'});
+    element.href = URL.createObjectURL(file);
+    element.download = fileName;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+  
+  // Copy file content
+  const handleCopy = () => {
+    navigator.clipboard.writeText(editorContent)
+      .catch(err => console.error('Could not copy text: ', err));
+  };
 
   return (
-    <div className="code-editor-container">
+    <div className={`code-editor-container theme-${currentTheme}`}>
       <div className="code-editor-nav">
         <div className="code-editor-nav-actions">
           <button 
@@ -301,17 +342,15 @@ const CodeEditor = ({
         </div>
         
         <div className="code-editor-actions">
-          {!readOnly && (
-            <button 
-              className="editor-action-btn"
-              onClick={handleSave}
-              disabled={isSaving || !isModified}
-              title="Save file (Ctrl+S)"
-            >
-              <Save size={16} className={isSaving ? 'spin' : ''} />
-              <span>Save</span>
-            </button>
-          )}
+          <button 
+            className="editor-action-btn"
+            onClick={handleSave}
+            disabled={!isModified || !onSave}
+            title="Save file (Ctrl+S)"
+          >
+            <Save size={16} />
+            <span>Save</span>
+          </button>
           
           <button 
             className="editor-action-btn"
@@ -374,33 +413,34 @@ const CodeEditor = ({
               onChange={(e) => setTabSize(parseInt(e.target.value))}
             />
           </div>
+          
+          <div className="editor-setting">
+            <label>Theme:</label>
+            <select
+              value={currentTheme}
+              onChange={(e) => setCurrentTheme(e.target.value)}
+            >
+              <option value="github">Light</option>
+              <option value="dark">Dark</option>
+              <option value="auto">Auto (System)</option>
+            </select>
+          </div>
         </div>
       )}
       
       <div className="code-editor-content">
-        <div 
-          ref={lineNumbersRef} 
-          className="code-editor-line-numbers"
-          style={{ fontSize: `${fontSize}px` }}
-        ></div>
-        
-        <textarea
-          ref={editorRef}
+        <Editor
+          height="100%"
+          language={getLanguage()}
           value={editorContent}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onScroll={handleScroll}
-          onClick={handleCursorMove}
-          onKeyUp={handleCursorMove}
-          className={`code-editor-textarea ${fileType}`}
-          style={{ 
-            fontSize: `${fontSize}px`,
-            backgroundColor: theme === 'github' ? '#ffffff' : '#1e1e1e',
-            color: theme === 'github' ? '#000000' : '#d4d4d4'
+          theme={currentTheme === 'dark' ? 'vs-dark' : 'vs-light'}
+          options={getEditorOptions()}
+          onChange={(value) => {
+            setEditorContent(value);
+            setIsModified(true);
           }}
-          readOnly={readOnly}
-          spellCheck="false"
-          wrap="off"
+          onMount={handleEditorDidMount}
+          className={`monaco-editor ${problemHighlightingActive ? 'problem-highlighting-active' : ''}`}
         />
         
         <div className={`save-success-message ${showSaveSuccess ? 'visible' : ''}`}>
@@ -416,6 +456,7 @@ const CodeEditor = ({
         <div className="code-editor-status-bar-right">
           <span>Ln {cursorPosition.line}, Col {cursorPosition.column}</span>
           <span>Spaces: {tabSize}</span>
+          <span>Theme: {currentTheme}</span>
         </div>
       </div>
     </div>
