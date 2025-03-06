@@ -41,7 +41,11 @@ contextBridge.exposeInMainWorld("electron", {
       "open-folder", 
       "request-file-list", 
       "create-file", 
-      "create-folder"
+      "create-folder",
+      "write-file",
+      "read-file",
+      "count-tokens",
+      "refresh-file"
     ];
     if (validChannels.includes(channel)) {
       // Ensure data is serializable before sending
@@ -55,7 +59,11 @@ contextBridge.exposeInMainWorld("electron", {
       "file-list-data",
       "file-processing-status",
       "file-created",
-      "folder-created"
+      "folder-created",
+      "file-saved",
+      "file-read",
+      "tokens-counted",
+      "file-refreshed"
     ];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
@@ -94,4 +102,80 @@ contextBridge.exposeInMainWorld("electron", {
       }
     },
   },
+  writeFile: (filePath, content) => {
+    return new Promise((resolve, reject) => {
+      // Set up a one-time listener for the response
+      const responseHandler = (_, response) => {
+        ipcRenderer.removeListener('file-saved', responseHandler);
+        if (response.success) {
+          resolve(response);
+        } else {
+          reject(new Error(response.error || 'Failed to save file'));
+        }
+      };
+      
+      // Listen for the response
+      ipcRenderer.once('file-saved', responseHandler);
+      
+      // Send the request
+      ipcRenderer.send('write-file', { filePath, content });
+    });
+  },
+  readFile: (filePath) => {
+    return new Promise((resolve, reject) => {
+      // Set up a one-time listener for the response
+      const responseHandler = (_, response) => {
+        ipcRenderer.removeListener('file-read', responseHandler);
+        if (response.success) {
+          resolve(response.content);
+        } else {
+          reject(new Error(response.error || 'Failed to read file'));
+        }
+      };
+      
+      // Listen for the response
+      ipcRenderer.once('file-read', responseHandler);
+      
+      // Send the request
+      ipcRenderer.send('read-file', filePath);
+    });
+  },
+  countTokens: (content) => {
+    return new Promise((resolve, reject) => {
+      // Set up a one-time listener for the response
+      const responseHandler = (_, response) => {
+        ipcRenderer.removeListener('tokens-counted', responseHandler);
+        if (response.success) {
+          resolve(response.tokenCount);
+        } else {
+          reject(new Error(response.error || 'Failed to count tokens'));
+        }
+      };
+      
+      // Listen for the response
+      ipcRenderer.once('tokens-counted', responseHandler);
+      
+      // Send the request
+      ipcRenderer.send('count-tokens', content);
+    });
+  },
+  refreshFile: (filePath) => {
+    return new Promise((resolve, reject) => {
+      // Set up a one-time listener for the response
+      const responseHandler = (_, response) => {
+        ipcRenderer.removeListener('file-refreshed', responseHandler);
+        if (response.success) {
+          resolve(response.file);
+        } else {
+          reject(new Error(response.error || 'Failed to refresh file'));
+        }
+      };
+      
+      // Listen for the response
+      ipcRenderer.once('file-refreshed', responseHandler);
+      
+      // Send the request
+      ipcRenderer.send('refresh-file', filePath);
+    });
+  }
 });

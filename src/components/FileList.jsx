@@ -76,7 +76,8 @@ const FileList = ({
 
   // Ensure we have a proper file viewing handler
   const handleViewFile = (file) => {
-    if (onViewFile && typeof onViewFile === 'function') {
+    // Helper function for readFile fallback - moved to function body root
+    const fallbackToReadFile = () => {
       // If file.content is already available, we can use it directly
       if (file.content) {
         onViewFile(file);
@@ -97,6 +98,30 @@ const FileList = ({
         // Fallback
         onViewFile(file);
       }
+    };
+    
+    if (onViewFile && typeof onViewFile === 'function') {
+      // Always try to refresh the file from disk to get the latest content
+      if (window.electron && window.electron.refreshFile) {
+        window.electron.refreshFile(file.path)
+          .then(refreshedFile => {
+            // Update the file in the files array with refreshed content
+            const updatedFiles = files.map(f => 
+              f.path === file.path ? refreshedFile : f
+            );
+            
+            // Open the file with fresh content
+            onViewFile(refreshedFile);
+          })
+          .catch(refreshError => {
+            console.error("Error refreshing file:", refreshError);
+            // Fall back to regular file reading if refresh fails
+            fallbackToReadFile();
+          });
+      } else {
+        // If refreshFile is not available, fall back to readFile
+        fallbackToReadFile();
+      }
     }
   };
 
@@ -105,8 +130,46 @@ const FileList = ({
     try {
       // Check if we have access to the electron API
       if (window.electron && window.electron.writeFile) {
-        await window.electron.writeFile(filePath, content);
-        return true;
+        // Use the direct writeFile method instead of a custom implementation
+        const result = await window.electron.writeFile(filePath, content);
+        
+        if (result.success) {
+          // Update the file in the local files array
+          const updatedFiles = files.map(file => {
+            if (file.path === filePath) {
+              // Update the current file with new content
+              return {
+                ...file,
+                content: content
+              };
+            }
+            return file;
+          });
+          
+          // Update the viewedFile with the new content
+          if (viewedFile && viewedFile.path === filePath) {
+            onViewFile({
+              ...viewedFile,
+              content: content
+            });
+          }
+          
+          // Calculate tokens for the updated file
+          if (window.electron && window.electron.countTokens) {
+            try {
+              const tokenCount = await window.electron.countTokens(content);
+              // Further update the file with new token count
+              const fileWithTokens = updatedFiles.find(f => f.path === filePath);
+              if (fileWithTokens) {
+                fileWithTokens.tokenCount = tokenCount;
+              }
+            } catch (err) {
+              console.error("Error counting tokens:", err);
+            }
+          }
+        }
+        
+        return result.success;
       } else {
         console.error("Electron API not available for file saving");
         return false;

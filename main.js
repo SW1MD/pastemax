@@ -545,6 +545,161 @@ ipcMain.on("request-file-list", (event, folderPath) => {
   }
 });
 
+// Handle file writing
+ipcMain.on("write-file", (event, { filePath, content }) => {
+  try {
+    console.log("Writing to file:", filePath);
+    
+    // Write content to file
+    fs.writeFileSync(filePath, content, 'utf8');
+    
+    // Report success
+    event.sender.send("file-saved", { 
+      success: true, 
+      path: filePath 
+    });
+    
+    console.log("File saved successfully:", filePath);
+  } catch (err) {
+    console.error("Error writing file:", err);
+    event.sender.send("file-saved", { 
+      success: false, 
+      error: err.message,
+      path: filePath
+    });
+  }
+});
+
+// Handle file reading
+ipcMain.on("read-file", (event, filePath) => {
+  try {
+    console.log("Reading file:", filePath);
+    
+    // Read file content
+    const content = fs.readFileSync(filePath, 'utf8');
+    
+    // Report success with content
+    event.sender.send("file-read", { 
+      success: true, 
+      path: filePath,
+      content: content
+    });
+    
+    console.log("File read successfully:", filePath);
+  } catch (err) {
+    console.error("Error reading file:", err);
+    event.sender.send("file-read", { 
+      success: false, 
+      error: err.message,
+      path: filePath
+    });
+  }
+});
+
+// Handle token counting
+ipcMain.on("count-tokens", (event, content) => {
+  try {
+    // Calculate token count
+    const tokenCount = countTokens(content);
+    
+    // Report success with token count
+    event.sender.send("tokens-counted", { 
+      success: true,
+      tokenCount: tokenCount
+    });
+  } catch (err) {
+    console.error("Error counting tokens:", err);
+    event.sender.send("tokens-counted", { 
+      success: false, 
+      error: err.message
+    });
+  }
+});
+
+// Handle file refresh after save
+ipcMain.on("refresh-file", (event, filePath) => {
+  try {
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      event.sender.send("file-refreshed", { 
+        success: false, 
+        error: "File not found",
+        path: filePath
+      });
+      return;
+    }
+    
+    // Read file content
+    const stats = fs.statSync(filePath);
+    const fileSize = stats.size;
+    
+    // Skip files that are too large
+    if (fileSize > MAX_FILE_SIZE) {
+      event.sender.send("file-refreshed", { 
+        success: true, 
+        file: {
+          name: path.basename(filePath),
+          path: filePath,
+          tokenCount: 0,
+          size: fileSize,
+          content: "",
+          isBinary: false,
+          isSkipped: true,
+          error: "File too large to process",
+        }
+      });
+      return;
+    }
+    
+    // Check if the file is binary
+    const isBinary = isBinaryFile(filePath);
+    
+    if (isBinary) {
+      // Skip token counting for binary files
+      event.sender.send("file-refreshed", { 
+        success: true, 
+        file: {
+          name: path.basename(filePath),
+          path: filePath,
+          tokenCount: 0,
+          size: fileSize,
+          content: "",
+          isBinary: true,
+          isSkipped: false,
+          fileType: path.extname(filePath).substring(1).toUpperCase(),
+        }
+      });
+    } else {
+      // Read file content
+      const fileContent = fs.readFileSync(filePath, "utf8");
+      
+      // Calculate token count
+      const tokenCount = countTokens(fileContent);
+      
+      // Send updated file info
+      event.sender.send("file-refreshed", { 
+        success: true, 
+        file: {
+          name: path.basename(filePath),
+          path: filePath,
+          content: fileContent,
+          tokenCount: tokenCount,
+          size: fileSize,
+          isBinary: false,
+          isSkipped: false,
+        }
+      });
+    }
+  } catch (err) {
+    console.error("Error refreshing file:", err);
+    event.sender.send("file-refreshed", { 
+      success: false, 
+      error: err.message,
+      path: filePath
+    });
+  }
+});
+
 // Check if a file should be excluded by default, using glob matching
 function shouldExcludeByDefault(filePath, rootDir) {
   const relativePath = path.relative(rootDir, filePath);
