@@ -74,13 +74,41 @@ const FileList = ({
     }
   ];
 
+  // Ensure we have a proper file viewing handler
+  const handleViewFile = (file) => {
+    if (onViewFile && typeof onViewFile === 'function') {
+      // If file.content is already available, we can use it directly
+      if (file.content) {
+        onViewFile(file);
+      } 
+      // If we need to fetch content via electron
+      else if (window.electron && window.electron.readFile) {
+        window.electron.readFile(file.path)
+          .then(content => {
+            const fileWithContent = {...file, content};
+            onViewFile(fileWithContent);
+          })
+          .catch(err => {
+            console.error("Error reading file:", err);
+            // Still try to open with whatever we have
+            onViewFile(file);
+          });
+      } else {
+        // Fallback
+        onViewFile(file);
+      }
+    }
+  };
+
   // If a file is being viewed, show the code editor instead of the file list
   if (viewedFile) {
     return (
       <div className="full-height-editor">
         <CodeEditor 
-          file={viewedFile} 
-          onClose={onCloseView} 
+          filePath={viewedFile.path}
+          content={viewedFile.content}
+          onClose={onCloseView}
+          readOnly={false}
           problemHighlightingActive={problemHighlightingActive}
         />
       </div>
@@ -101,7 +129,7 @@ const FileList = ({
                 file={file}
                 isSelected={true} // All displayed files are selected
                 toggleSelection={toggleFileSelection}
-                onViewFile={onViewFile}
+                onViewFile={handleViewFile}  // Pass our enhanced handler
               />
             ))}
           </div>

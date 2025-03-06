@@ -447,7 +447,7 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                handleSubmit();
+                handleSubmit(e);
               }
             }}
             placeholder="Enter URL or search..."
@@ -461,13 +461,6 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
               title="Bookmark this page"
             >
               <Star size={16} />
-            </button>
-            <button
-              className="url-action-btn"
-              onClick={handlePaste}
-              title="Paste from clipboard"
-            >
-              <Clipboard size={16} />
             </button>
             <button
               className="url-action-btn"
@@ -501,9 +494,6 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
         </div>
         
         <div className="web-browser-actions">
-          <button className="web-browser-action-btn" title="Extensions">
-            <Menu size={16} />
-          </button>
           {onClose && (
             <button 
               onClick={onClose}

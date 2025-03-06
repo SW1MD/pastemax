@@ -5,6 +5,7 @@ import CopyButton from "./components/CopyButton";
 import WebBrowser from "./components/WebBrowser";
 import ResizeHandle from "./components/ResizeHandle";
 import { FileData } from "./types/FileTypes";
+import CodeEditor from './components/CodeEditor';
 
 // Keys for localStorage
 const STORAGE_KEYS = {
@@ -911,7 +912,7 @@ const App = () => {
         ),
         json: (
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-            <path d="M12.043 23.968c.479-.004.953-.029 1.426-.094a11.805 11.805 0 003.146-.863 12.404 12.404 0 003.793-2.542 11.977 11.977 0 002.44-3.427 11.794 11.794 0 001.02-3.476c.149-1.16.135-2.346-.045-3.499a11.96 11.96 0 00-.793-2.788 11.197 11.197 0 00-.854-1.617c-1.168-1.837-2.861-3.314-4.81-4.3a12.835 12.835 0 00-2.172-.87h-.005c.119.063.24.132.24.345.201.074.239.146.351.351.225a8.93 8.93 0 011.559 1.33c1.063 1.145 1.797 2.548 2.218 4.041.284.982.434 1.998.495 3.017.044.743.044 1.491-.047 2.229-.149 1.27-.554 2.51-1.228 3.596a7.475 7.475 0 01-1.903 2.084c-1.244.928-2.877 1.482-4.436 1.114a3.916 3.916 0 01-.748-.258 4.692 4.692 0 01-.779-.45 6.08 6.08 0 01-1.244-1.105 6.507 6.507 0 01-1.049-1.747 7.366 7.366 0 01-.494-2.54c-.03-1.273.225-2.553.854-3.67a6.43 6.43 0 011.663-1.918c.225-.178.464-.333.704-.479l.016-.007a5.121 5.121 0 00-1.441-.12 4.963 4.963 0 00-1.228.24c-.359.12-.704.27-1.019.45-.315.18-.614.39-.898.63-.765.66-1.383 1.5-1.732 2.43a5.51 5.51 0 00-.3 1.242c-.045.346-.06.698-.044 1.049.03.698.194 1.388.465 2.022.255.634.614 1.215 1.049 1.049 1.721a6.306 6.306 0 003.656 2.022c.42.075.854.12 1.273.135.195 0 .39-.044.585-.044 1.305-.09 2.579-.48 3.716-1.138a8.114 8.114 0 001.333-1.034 7.874 7.874 0 001.138-1.336c.149-.227.285-.45.405-.689.225-.406.405-.826.54-1.259a7.8 7.8 0 00.33-1.499c.045-.272.045-.556.06-.823 0-.15 0-.3-.015-.45a10.641 10.641 0 00-.299-2.022 10.537 10.537 0 00-.958-2.55c-.42-.824-.944-1.56-1.56-2.235a8.363 8.363 0 00-1.349-1.229 6.917 6.917 0 00-1.499-.914c-.136-.06-.271-.136-.419-.196l.015.016c1.049.48 2.007 1.143 2.877 1.928.854.779.779.779 1.604 1.692 2.112 2.699.51 1.004.854 2.097.958 3.236.06.779.045 1.558-.044 2.322a9.897 9.897 0 01-.689 2.548c-.329.914-.779 1.772-1.348 2.519-.899 1.199-2.098 2.112-3.476 2.609-.196.074-.404.15-.6.209z"/>
+            <path d="M12.043 23.968c.479-.004.953-.029 1.426-.094a11.805 11.805 0 003.146-.863 12.404 12.404 0 003.793-2.542 11.977 11.977 0 002.44-3.427 11.794 11.794 0 001.02-3.476c.149-1.16.135-2.346-.045-3.499a11.96 11.96 0 00-.793-2.788 11.197 11.197 0 00-.854-1.617c-1.168-1.837-2.861-3.314-4.81-4.3a12.835 12.835 0 00-2.172-.87h-.005c.119.063.24.132.24.345.201.074.239.146.351.351.225a8.93 8.93 0 011.559 1.33c1.063 1.145 1.797 2.548 2.218 4.041.284.982.434 1.998.495 3.017.044.743.044 1.491-.047 2.229-.149 1.27-.554 2.51-1.228 3.596a7.475 7.475 0 01-1.903 2.084c-1.244.928-2.877 1.482-4.436 1.114a3.916 3.916 0 01-.748-.258 4.692 4.692 0 01-.779-.45 6.08 6.08 0 01-1.244-1.105 6.507 6.507 0 01-1.049-1.747 7.366 7.366 0 01-.494-2.54c-.03-1.273.225-2.553.854-3.67a6.43 6.43 0 011.663-1.918c.225-.178.464-.333.704-.479l.016-.007a5.121 5.121 0 00-1.441-.12 4.963 4.963 0 00-1.228.24c-.359.12-.704.27-1.019.45-.315.18-.614.39-.898.63-.765.66-1.383 1.5-1.732 1.732 1.5 2.43a5.51 5.51 0 00-.3 1.242c-.045.346-.06.698-.044 1.049.03.698.194 1.388.465 2.022.255.634.614 1.049 1.049 1.049 1.721a6.306 6.306 0 003.656 2.022c.42.075.854.12 1.273.135.195 0 .39-.044.585-.044 1.305-.09 2.579-.48 3.716-1.138a8.114 8.114 0 001.333-1.034 7.874 7.874 0 001.138-1.336c.149-.227.285-.45.405-.689.225-.406.405-.826.54-1.259a7.8 7.8 0 00.33-1.499c.045-.272.045-.556.06-.823 0-.15 0-.3-.015-.45a10.641 10.641 0 00-.299-2.022 10.537 10.537 0 00-.958-2.55c-.42-.824-.944-1.56-1.56-2.235a8.363 8.363 0 00-1.349-1.229 6.917 6.917 0 00-1.499-.914c-.136-.06-.271-.136-.419-.196l.015.016c1.049.48 2.007 1.143 2.877 1.928.854.779.779.779 1.604 1.692 2.112 2.699.51 1.004.854 2.097.854 3.236.06.779.045 1.558-.044 2.322a9.897 9.897 0 01-.689 2.548c-.329.914-.779 1.772-1.348 2.519-.899 1.199-2.098 2.112-3.476 2.609-.196.074-.404.15-.6.209z"/>
           </svg>
         ),
         md: (
@@ -1098,6 +1099,114 @@ const App = () => {
     </div>
   );
 
+  // Inside the App component
+  const [currentFile, setCurrentFile] = useState(null);
+  const [fileContent, setFileContent] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [fileHistory, setFileHistory] = useState([]);
+  const [currentFolder, setCurrentFolder] = useState(''); // Track current folder for navigation
+
+  // Function to open a file in the editor
+  const openFile = async (filePath, isFolder = false) => {
+    try {
+      if (isFolder) {
+        // Handle folder navigation
+        handleFolderNavigation(filePath);
+        return;
+      }
+      
+      // Add to file history
+      setFileHistory(prev => {
+        // Remove the file if it already exists in history
+        const filtered = prev.filter(p => p !== filePath);
+        // Add it to the end
+        return [...filtered, filePath];
+      });
+      
+      // Read file content
+      const content = await window.electron.readFile(filePath);
+      setCurrentFile(filePath);
+      setFileContent(content);
+      setIsEditing(true);
+      
+      // Set current folder to the parent folder of this file
+      const parentFolder = filePath.substring(0, filePath.lastIndexOf('/'));
+      setCurrentFolder(parentFolder);
+      
+      // Switch to edit page if not already there
+      setActivePage("edit");
+    } catch (error) {
+      console.error('Error opening file:', error);
+    }
+  };
+
+  // Function to handle folder navigation
+  const handleFolderNavigation = (folderPath) => {
+    // Update current folder
+    setCurrentFolder(folderPath);
+    
+    // If we're in the file browser view, update the displayed files
+    if (window.electron) {
+      window.electron.ipcRenderer.send("request-file-list", folderPath);
+    }
+    
+    // Switch to select page to show the file browser
+    setActivePage("select");
+    setViewMode("file-browser");
+    
+    // Expand the folder in the file tree
+    const newExpandedNodes = { ...expandedNodes };
+    
+    // Split the path and expand each parent folder
+    const pathParts = folderPath.split('/');
+    let currentPath = '';
+    
+    for (let i = 0; i < pathParts.length; i++) {
+      currentPath += (i === 0 ? '' : '/') + pathParts[i];
+      newExpandedNodes[currentPath] = true;
+    }
+    
+    setExpandedNodes(newExpandedNodes);
+    localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
+    
+    // If we have a selected folder, make sure it's updated
+    if (selectedFolder && folderPath.startsWith(selectedFolder)) {
+      // This is a subfolder of the selected folder
+      // Update UI to show this folder is selected in the file browser
+      // This depends on your specific implementation
+    }
+  };
+
+  // Function to save file changes
+  const saveFile = async (content) => {
+    if (!currentFile) return;
+    
+    try {
+      // Assuming you have an electron IPC method to write to a file
+      await window.electron.writeFile(currentFile, content);
+      return true;
+    } catch (error) {
+      console.error('Error saving file:', error);
+      return false;
+    }
+  };
+
+  // Function to handle file tree navigation from the editor
+  const navigateToFileFromEditor = (filePath, isFolder = false) => {
+    if (isFolder) {
+      // If it's a folder, update the file browser to show that folder
+      handleFolderNavigation(filePath);
+    } else {
+      // If it's a file, open it in the editor
+      const fileData = allFiles.find(file => file.path === filePath);
+      if (fileData) {
+        openFile(filePath);
+      } else {
+        console.error("File not found:", filePath);
+      }
+    }
+  };
+
   return (
     <div className="app-container">
       <div className="header">
@@ -1240,9 +1349,19 @@ const App = () => {
                   )}
 
                   {activePage === "edit" && (
-                    <div className="edit-container">
-                      <h2>Edit Files</h2>
-                      <p>This page will contain file editing tools.</p>
+                    <div className="editor-view">
+                      <CodeEditor
+                        filePath={currentFile}
+                        content={fileContent}
+                        onSave={saveFile}
+                        onClose={() => {
+                          setIsEditing(false);
+                          setActivePage("select");
+                        }}
+                        theme={themeMode === 'dark' ? 'tomorrow_night' : 'github'}
+                        onNavigate={navigateToFileFromEditor}
+                        fileHistory={fileHistory}
+                      />
                     </div>
                   )}
 

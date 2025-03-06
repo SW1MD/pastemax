@@ -90,7 +90,7 @@ const FileCard = ({
           </button>
           <button
             className="file-card-action"
-            onClick={() => onViewFile(file)}
+            onClick={() => onViewFile && onViewFile(file)}
             title="View file content"
           >
             <Eye size={16} />
