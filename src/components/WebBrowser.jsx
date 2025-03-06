@@ -211,24 +211,142 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
   };
   
   const handleWebviewLoad = () => {
-    // Ensure loading state is reset
     setIsLoading(false);
     
-    // Try to update page title and favicon if webview is available
-    if (webviewRef.current) {
-      try {
-        const title = webviewRef.current.getTitle();
-        setPageTitle(title || extractDomainFromUrl(url));
+    try {
+      const webview = webviewRef.current;
+      
+      if (!webview) return;
+      
+      // Try to update the title and URL
+      // This will work for same-origin content or if using electron webview
+      if (window.electron && webview.getTitle) {
+        // For electron webview
+        setPageTitle(webview.getTitle());
+        const currentUrl = webview.getURL();
+        setUrl(currentUrl);
         
-        // Try to get favicon if available
-        if (webviewRef.current.getFavicon) {
-          const icon = webviewRef.current.getFavicon();
-          if (icon) setFavicon(icon);
+        // Get the favicon if available
+        try {
+          const faviconUrl = `https://www.google.com/s2/favicons?domain=${extractDomainFromUrl(currentUrl)}`;
+          setFavicon(faviconUrl);
+        } catch (e) {
+          console.error("Error setting favicon", e);
         }
-      } catch (err) {
-        console.error("Error getting page info:", err);
-        setPageTitle(extractDomainFromUrl(url));
+        
+        // Update history if needed
+        if (history[historyIndex] !== currentUrl) {
+          const newHistory = [...history.slice(0, historyIndex + 1), currentUrl];
+          setHistory(newHistory);
+          setHistoryIndex(newHistory.length - 1);
+        }
+      } else {
+        // For iframe in browser
+        try {
+          // Try to access the iframe content if same-origin
+          if (webview.contentWindow && webview.contentWindow.document) {
+            setPageTitle(webview.contentWindow.document.title);
+            const iframeUrl = webview.contentWindow.location.href;
+            setUrl(iframeUrl);
+            
+            // Apply our custom scrollbar styles to the iframe
+            const injectScrollbarStyles = () => {
+              try {
+                const doc = webview.contentWindow.document;
+                
+                // Check if we've already injected styles
+                if (!doc.getElementById('custom-scrollbar-styles')) {
+                  // Create style element
+                  const style = doc.createElement('style');
+                  style.id = 'custom-scrollbar-styles';
+                  
+                  // Get computed style values from document
+                  const computedStyle = window.getComputedStyle(document.documentElement);
+                  const thumbColor = computedStyle.getPropertyValue('--scrollbar-thumb-color') || 'rgba(128, 128, 128, 0)';
+                  const trackColor = computedStyle.getPropertyValue('--scrollbar-track-color') || 'transparent';
+                  const thumbHoverColor = computedStyle.getPropertyValue('--scrollbar-thumb-hover-color') || 'rgba(128, 128, 128, 0.7)';
+                  const thumbActiveColor = computedStyle.getPropertyValue('--scrollbar-thumb-active-color') || 'rgba(128, 128, 128, 0.5)';
+
+                  style.textContent = `
+                    /* Custom Scrollbar Styles for iframe content */
+                    ::-webkit-scrollbar {
+                      width: 8px;
+                      height: 8px;
+                      background-color: transparent;
+                    }
+                    
+                    ::-webkit-scrollbar-track {
+                      background-color: ${trackColor};
+                    }
+                    
+                    ::-webkit-scrollbar-thumb {
+                      background-color: ${thumbColor};
+                      border-radius: 4px;
+                      transition: background-color 0.3s ease;
+                    }
+                    
+                    :hover::-webkit-scrollbar-thumb,
+                    :focus::-webkit-scrollbar-thumb,
+                    :active::-webkit-scrollbar-thumb {
+                      background-color: ${thumbActiveColor};
+                    }
+                    
+                    ::-webkit-scrollbar-thumb:hover {
+                      background-color: ${thumbHoverColor};
+                    }
+                    
+                    * {
+                      scrollbar-width: thin;
+                      scrollbar-color: ${thumbColor} ${trackColor};
+                    }
+                    
+                    *:hover,
+                    *:focus,
+                    *:active {
+                      scrollbar-color: ${thumbActiveColor} ${trackColor};
+                    }
+                  `;
+                  
+                  // Add to head
+                  doc.head.appendChild(style);
+                }
+              } catch (e) {
+                // Silently fail for cross-origin content
+                console.log("Cannot inject scrollbar styles - cross-origin restriction");
+              }
+            };
+            
+            // Try to inject our styles
+            injectScrollbarStyles();
+            
+            // Update history if needed
+            if (history[historyIndex] !== iframeUrl) {
+              const newHistory = [...history.slice(0, historyIndex + 1), iframeUrl];
+              setHistory(newHistory);
+              setHistoryIndex(newHistory.length - 1);
+            }
+          }
+        } catch (e) {
+          // Handle cross-origin restrictions gracefully
+          console.log("Could not access iframe content due to cross-origin restrictions");
+          
+          // For cross-origin content, at least update the URL from the iframe's src
+          const currentSrc = webview.src;
+          if (currentSrc && history[historyIndex] !== currentSrc) {
+            setUrl(currentSrc);
+            const newHistory = [...history.slice(0, historyIndex + 1), currentSrc];
+            setHistory(newHistory);
+            setHistoryIndex(newHistory.length - 1);
+          }
+        }
       }
+      
+      // Notify parent component of URL change
+      if (onUrlChange) {
+        onUrlChange(url);
+      }
+    } catch (error) {
+      console.error("Error in handleWebviewLoad", error);
     }
   };
   
