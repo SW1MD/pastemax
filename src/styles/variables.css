@@ -1,0 +1,136 @@
+/* Theme variables and global settings */
+:root {
+  --primary-color: #000000;
+  --primary-dark: #333333;
+  --secondary-color: #666666;
+  --background-color: #ffffff;
+  --text-color: #000000;
+  --border-color: #e0e0e0;
+  --hover-color: #f5f5f5;
+  --success-color: #000000;
+  --warning-color: #666666;
+  --error-color: #000000;
+  --disabled-color: #cccccc;
+  --icon-color: #555555;
+  --card-background: #ffffff;
+  --input-background: #ffffff;
+  --sidebar-background: #f5f5f5;
+  --warning-background: #fff3cd;
+  --warning-text: #856404;
+  --error-background: #f8d7da;
+  --error-text: #721c24;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --button-text-color: #ffffff;
+  --nav-text-color: #333333;
+  --browser-tab-active: #ffffff;
+  --browser-tab-inactive: #f0f0f0;
+  --browser-chrome: #f5f5f5;
+  --file-browser-bg: #ffffff;
+}
+
+/* Dark theme variables */
+[data-theme="dark"] {
+  --primary-color: #0078d4;
+  --primary-dark: #005a9e;
+  --secondary-color: #a0a0a0;
+  --background-color: #1e1e1e;
+  --text-color: #e0e0e0;
+  --border-color: #444444;
+  --hover-color: #2d2d2d;
+  --success-color: #4caf50;
+  --warning-color: #ff9800;
+  --error-color: #f44336;
+  --disabled-color: #555555;
+  --icon-color: #a0a0a0;
+  --card-background: #252525;
+  --input-background: #333333;
+  --sidebar-background: #252525;
+  --warning-background: #332b00;
+  --warning-text: #ffda6a;
+  --error-background: #350000;
+  --error-text: #ff6b6b;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --button-text-color: #ffffff;
+  --nav-text-color: #e0e0e0;
+  --browser-tab-active: #252525;
+  --browser-tab-inactive: #333333;
+  --browser-chrome: #1e1e1e;
+  --file-browser-bg: #1e1e1e;
+}
+
+/* Global element styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Prevent scrolling at the document level */
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.5;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: fixed; /* Force fixed positioning to prevent layout shifts */
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Common font styles */
+.monospace {
+  font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Dark Theme Special Adjustments */
+[data-theme="dark"] .code-editor-line-numbers {
+  background-color: #1e1e1e;
+  color: #6a737d;
+}
+
+[data-theme="dark"] .code-editor-textarea {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+} 

@@ -1,5 +1,4 @@
-import React from "react";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, ChangeEvent, FormEvent } from "react";
 import { RefreshCw, Home, ArrowLeft, ArrowRight, X } from "lucide-react";
 
 declare global {
@@ -30,7 +29,7 @@ const WebBrowser = ({
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUrlChange = (e: any) => {
     setUrl(e.target.value);
   };
   
@@ -52,7 +51,7 @@ const WebBrowser = ({
     setIsLoading(true);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
     navigateTo(url);
   };
@@ -179,16 +178,6 @@ const WebBrowser = ({
             className="web-browser-url-input"
           />
         </form>
-        
-        {onClose && (
-          <button 
-            onClick={onClose}
-            className="web-browser-close-btn"
-            title="Close browser"
-          >
-            <X size={18} />
-          </button>
-        )}
       </div>
       
       <div className="web-browser-content">

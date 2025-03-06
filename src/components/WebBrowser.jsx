@@ -395,7 +395,6 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
         <div className="web-browser-tab active">
           <img src={favicon || "/favicon.ico"} className="tab-favicon" alt="" />
           <span className="tab-title">{pageTitle || "New Tab"}</span>
-          <button className="tab-close">×</button>
         </div>
         <button className="tab-new">
           <Plus size={14} />
@@ -494,15 +493,7 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
         </div>
         
         <div className="web-browser-actions">
-          {onClose && (
-            <button 
-              onClick={onClose}
-              className="web-browser-close-btn"
-              title="Close browser"
-            >
-              <X size={18} />
-            </button>
-          )}
+          {/* Close button removed */}
         </div>
       </div>
       

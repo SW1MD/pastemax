@@ -469,10 +469,6 @@ const App = () => {
   // Add reference for the container and state for panel sizes
   const splitContainerRef = useRef(null);
   const resizeHandleRef = useRef(null);
-  const [panelSizes, setPanelSizes] = useState({
-    pastemax: 50, // Default to 50% width
-    browser: 50   // Default to 50% width
-  });
   const [isResizing, setIsResizing] = useState(false);
   const pasteSizeRef = useRef(50); // Keep reference to avoid stale closures
 
@@ -481,7 +477,7 @@ const App = () => {
     e.preventDefault();
     document.body.classList.add('resizing');
     setIsResizing(true);
-    pasteSizeRef.current = panelSizes.pastemax;
+    pasteSizeRef.current = 50;
     
     // Capture the initial position of the mouse/touch and handle
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -489,38 +485,11 @@ const App = () => {
       startX: clientX,
       startPasteMaxWidth: pasteSizeRef.current
     };
-  }, [panelSizes.pastemax]);
+  }, []);
 
   const handleResizeMove = useCallback((e) => {
-    if (!isResizing || !splitContainerRef.current || !resizeHandleRef.current) return;
-    
-    // Get the container and its width
-    const container = splitContainerRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const containerWidth = containerRect.width;
-    
-    // Calculate the change in position
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const deltaX = clientX - resizeHandleRef.current.startX;
-    const deltaPercent = (deltaX / containerWidth) * 100;
-    
-    // Calculate new width percentages
-    const minWidth = 20; // Minimum 20% width for each panel
-    let pasteMaxPercent = resizeHandleRef.current.startPasteMaxWidth + deltaPercent;
-    
-    // Enforce minimum widths
-    pasteMaxPercent = Math.max(minWidth, Math.min(pasteMaxPercent, 100 - minWidth));
-    
-    // Update the width with the calculated value
-    pasteSizeRef.current = pasteMaxPercent;
-    
-    // Use requestAnimationFrame to throttle updates for better performance
-    requestAnimationFrame(() => {
-      setPanelSizes({
-        pastemax: pasteMaxPercent,
-        browser: 100 - pasteMaxPercent
-      });
-    });
+    // In a fixed-width approach, we don't need resize logic for the browser width
+    // The CSS will now handle this with fixed dimensions
   }, [isResizing]);
 
   const handleResizeEnd = useCallback(() => {
@@ -572,9 +541,9 @@ const App = () => {
   // Save panel sizes in localStorage when they change
   useEffect(() => {
     if (!isResizing) {
-      localStorage.setItem('pastemax-panel-sizes', JSON.stringify(panelSizes));
+      localStorage.setItem('pastemax-panel-sizes', JSON.stringify({ pastemax: 50, browser: 50 }));
     }
-  }, [panelSizes, isResizing]);
+  }, [isResizing]);
   
   // Load saved panel sizes on initial render
   useEffect(() => {
@@ -582,7 +551,6 @@ const App = () => {
     if (savedSizes) {
       try {
         const parsedSizes = JSON.parse(savedSizes);
-        setPanelSizes(parsedSizes);
         pasteSizeRef.current = parsedSizes.pastemax;
       } catch (e) {
         console.error('Error parsing saved panel sizes', e);
@@ -1310,7 +1278,6 @@ const App = () => {
         >
           <div 
             className={`pastemax-container ${!browserVisible ? 'full-width' : ''}`}
-            style={browserVisible ? { width: `${panelSizes.pastemax}%` } : {}}
           >
             <Sidebar
               collapsed={sidebarCollapsed}
@@ -1490,14 +1457,14 @@ const App = () => {
           
           {browserVisible && (
             <>
-              <ResizeHandle onResizeStart={handleResizeStart} />
-              
               <div 
-                className="browser-container"
-                style={{ width: `${panelSizes.browser}%` }}
-              >
+                className="resize-handle" 
+                onMouseDown={handleResizeStart}
+                onTouchStart={handleResizeStart}
+              ></div>
+              <div className="browser-container">
                 <WebBrowser 
-                  initialUrl={browserUrl}
+                  onClose={toggleBrowser} 
                   onUrlChange={handleBrowserUrlChange}
                 />
               </div>

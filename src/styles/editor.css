@@ -1,0 +1,394 @@
+/* Code editor styles */
+
+/* Enhanced Code Editor Styles */
+.editor-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--background-color);
+  padding: 0;
+}
+
+.code-editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--background-color);
+}
+
+/* Editor Header */
+.code-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.code-editor-file-info {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.code-editor-icon {
+  margin-right: 8px;
+}
+
+.code-editor-filename {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-color);
+}
+
+.modified-indicator {
+  margin-left: 8px;
+  color: var(--warning-color);
+}
+
+.code-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editor-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-color);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.editor-action-btn:hover:not(:disabled) {
+  background-color: var(--hover-color);
+}
+
+.editor-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editor-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin-left: 8px;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--icon-color);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.editor-close-btn:hover {
+  background-color: var(--hover-color);
+  color: var(--error-color);
+}
+
+/* Editor Settings Panel */
+.editor-settings-panel {
+  padding: 12px;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.editor-setting {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.editor-setting label {
+  margin-right: 8px;
+  font-size: 13px;
+}
+
+.editor-setting select,
+.editor-setting input[type="checkbox"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-background);
+  color: var(--text-color);
+  font-size: 13px;
+}
+
+.editor-setting input[type="number"] {
+  width: 60px;
+}
+
+/* Editor Content Area */
+.code-editor-content {
+  display: flex;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Line Numbers */
+.code-editor-line-numbers {
+  width: 50px;
+  background-color: #f8f8f8;
+  border-right: 1px solid #eaeaea;
+  padding: 8px 4px;
+  text-align: right;
+  user-select: none;
+  color: #999;
+  overflow-y: hidden;
+  font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.code-editor-line-numbers div {
+  padding: 0 4px;
+  color: #999;
+}
+
+/* Textarea */
+.code-editor-textarea {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  resize: none;
+  outline: none;
+  font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  tab-size: 2;
+  background-color: #ffffff;
+  color: #333333;
+}
+
+.code-editor-textarea:focus {
+  outline: none;
+}
+
+/* Status Bar */
+.code-editor-status-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background-color: var(--card-background);
+  border-top: 1px solid var(--border-color);
+  color: var(--secondary-color);
+  font-size: 12px;
+  user-select: none;
+}
+
+.code-editor-status-bar-left {
+  display: flex;
+  align-items: center;
+}
+
+.code-editor-status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Success Message */
+.save-success-message {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 8px 16px;
+  background-color: var(--success-color);
+  color: white;
+  border-radius: 4px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+  transition: opacity 0.3s, transform 0.3s;
+  z-index: 100;
+}
+
+.save-success-message.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Syntax Highlighting Hints */
+.code-editor-textarea.js, 
+.code-editor-textarea.jsx, 
+.code-editor-textarea.ts, 
+.code-editor-textarea.tsx {
+  color: #333333;
+}
+
+/* Full-height editor styles */
+.full-height-editor {
+  height: calc(100vh - 60px); /* Adjust for header height */
+  overflow: hidden;
+  position: relative;
+}
+
+.full-height-editor .code-editor-container {
+  height: 100%;
+  border-radius: 0;
+}
+
+.full-height-editor .code-editor-header {
+  background-color: var(--card-background);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Code Editor Navigation */
+.code-editor-nav {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.code-editor-nav-actions {
+  display: flex;
+  gap: 4px;
+  margin-right: 16px;
+}
+
+.editor-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--icon-color);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.editor-nav-btn:hover:not(:disabled) {
+  background-color: var(--hover-color);
+  color: var(--primary-color);
+}
+
+.editor-nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.code-editor-breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-color);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.breadcrumb-item:hover {
+  background-color: var(--hover-color);
+}
+
+.breadcrumb-separator {
+  margin: 0 4px;
+  color: var(--secondary-color);
+}
+
+/* Keyboard shortcuts hint */
+.keyboard-shortcut {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  padding: 2px 4px;
+  background-color: var(--hover-color);
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--secondary-color);
+  font-family: inherit;
+  user-select: none;
+}
+
+/* Make sure the Monaco editor container takes full height */
+.monaco-editor {
+  height: 100% !important;
+}
+
+/* Problem highlight toggle */
+.problem-highlight-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  color: var(--text-color);
+  margin-left: auto;
+}
+
+.problem-highlight-toggle:hover {
+  background-color: var(--hover-color);
+}
+
+.problem-highlight-toggle.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .code-editor-actions button span {
+    display: none;
+  }
+  
+  .code-editor-actions button {
+    width: 32px;
+  }
+  
+  .code-editor-breadcrumbs {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+} 
