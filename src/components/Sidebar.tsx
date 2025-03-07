@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, MouseEventHandler } from "react";
 import { SidebarProps } from "../types/FileTypes";
-import { ChevronLeft, ChevronRight, FileText, Edit, Settings, MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Edit, Settings, MessageSquare, Folder } from "lucide-react";
 
 const Sidebar = ({
   collapsed,
@@ -47,9 +47,11 @@ const Sidebar = ({
 
   // Navigation items
   const navItems = [
+    { id: 'project', label: 'Project', icon: <Folder size={20} /> },
     { id: 'prompt', label: 'Prompt', icon: <MessageSquare size={20} /> },
     { id: 'select', label: 'Select', icon: <FileText size={20} /> },
     { id: 'edit', label: 'Edit', icon: <Edit size={20} /> },
+    { id: 'history', label: 'History', icon: <ChevronLeft size={20} /> },
     { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
   ];
 
