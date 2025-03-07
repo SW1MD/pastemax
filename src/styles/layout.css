@@ -84,7 +84,7 @@
   max-width: calc(100% - 500px) !important; /* Prevent exceeding available space */
   overflow: hidden;
   display: flex;
-  transition: width 0.2s ease;
+  transition: none; /* Remove width transition */
   position: relative;
   z-index: 20 !important; /* Higher z-index than browser with !important */
 }
@@ -107,6 +107,7 @@
   z-index: 1 !important; /* Lower z-index to prevent overlapping files view */
   transform: translateZ(0);
   box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  transition: none !important; /* Remove any transitions */
 }
 
 /* Ensure sidebar and content area always appear above browser */
@@ -127,7 +128,7 @@
   cursor: col-resize;
   position: relative;
   z-index: 10;
-  transition: background-color 0.2s;
+  transition: none; /* Remove background-color transition */
   margin: 0 -2px;
   touch-action: none;
 }
@@ -207,11 +208,13 @@ body.resizing .resize-handle {
     width: 450px !important;
     max-width: 450px !important;
     min-width: 450px !important;
+    transition: none !important;
   }
   
   .pastemax-container {
     min-width: 350px !important;
     flex: 1 1 auto !important; /* Allow growing */
+    transition: none !important;
   }
   
   .main-content.split-view {

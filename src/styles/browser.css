@@ -447,7 +447,7 @@
 .web-browser-content::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
   border-radius: 4px;
-  transition: background-color 0.3s ease;
+  transition: none;
 }
 
 .web-browser-content:hover::-webkit-scrollbar-thumb,
@@ -496,7 +496,7 @@
 .web-browser-webview::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
   border-radius: 4px;
-  transition: background-color 0.3s ease;
+  transition: none;
 }
 
 .web-browser-webview:hover::-webkit-scrollbar-thumb,
@@ -536,4 +536,19 @@
   background-color: var(--primary-color);
   color: var(--button-text-color);
   border-color: var(--primary-color);
+}
+
+.browser-container {
+  flex: 0 0 500px !important; /* FIXED basis of 500px, don't grow or shrink */
+  width: 500px !important; /* Fixed width */
+  max-width: 500px !important; /* Maximum width */
+  min-width: 500px !important; /* Minimum width */
+  border-left: 1px solid var(--border-color);
+  background-color: var(--background-color);
+  position: relative;
+  overflow: hidden;
+  z-index: 1 !important; /* Lower z-index to prevent overlapping files view */
+  transform: translateZ(0);
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  transition: none !important; /* Remove any transitions */
 } 

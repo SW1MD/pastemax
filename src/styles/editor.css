@@ -68,7 +68,17 @@
   color: var(--text-color);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: none;
+  min-width: fit-content;
+  height: 32px;
+  white-space: nowrap;
+}
+
+.editor-action-btn span {
+  display: inline-block;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .editor-action-btn:hover:not(:disabled) {
@@ -93,7 +103,7 @@
   border-radius: 4px;
   color: var(--icon-color);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: none;
 }
 
 .editor-close-btn:hover {
@@ -144,12 +154,12 @@
 /* Line Numbers */
 .code-editor-line-numbers {
   width: 50px;
-  background-color: #f8f8f8;
-  border-right: 1px solid #eaeaea;
+  background-color: var(--sidebar-background);
+  border-right: 1px solid var(--border-color);
   padding: 8px 4px;
   text-align: right;
   user-select: none;
-  color: #999;
+  color: var(--secondary-color);
   overflow-y: hidden;
   font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
   font-size: 13px;
@@ -158,7 +168,7 @@
 
 .code-editor-line-numbers div {
   padding: 0 4px;
-  color: #999;
+  color: var(--secondary-color);
 }
 
 /* Textarea */
@@ -175,12 +185,51 @@
   overflow-wrap: normal;
   overflow-x: auto;
   tab-size: 2;
-  background-color: #ffffff;
-  color: #333333;
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 
 .code-editor-textarea:focus {
   outline: none;
+}
+
+/* Custom scrollbar styles for the code editor textarea */
+.code-editor-textarea::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background-color: transparent;
+}
+
+.code-editor-textarea::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track-color);
+}
+
+.code-editor-textarea::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.code-editor-textarea:hover::-webkit-scrollbar-thumb,
+.code-editor-textarea:focus::-webkit-scrollbar-thumb,
+.code-editor-textarea:active::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-active-color);
+}
+
+.code-editor-textarea::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+/* Firefox scrollbar styles */
+.code-editor-textarea {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
+}
+
+.code-editor-textarea:hover,
+.code-editor-textarea:focus,
+.code-editor-textarea:active {
+  scrollbar-color: var(--scrollbar-thumb-active-color) var(--scrollbar-track-color);
 }
 
 /* Status Bar */
@@ -222,7 +271,7 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(-10px);
-  transition: opacity 0.3s, transform 0.3s;
+  transition: none;
   z-index: 100;
 }
 
@@ -264,35 +313,39 @@
 .code-editor-nav {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  justify-content: space-between;
+  padding: 8px 12px;
   background-color: var(--card-background);
   border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap; /* Allow wrapping on small screens */
 }
 
 .code-editor-nav-actions {
   display: flex;
-  gap: 4px;
-  margin-right: 16px;
+  align-items: center;
+  gap: 8px;
+  min-width: fit-content; /* Prevent buttons from squishing */
 }
 
 .editor-nav-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
+  gap: 4px;
+  padding: 4px 8px;
   background: none;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  color: var(--icon-color);
+  color: var(--text-color);
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: none;
+  min-width: 32px;
+  height: 32px;
 }
 
 .editor-nav-btn:hover:not(:disabled) {
   background-color: var(--hover-color);
-  color: var(--primary-color);
 }
 
 .editor-nav-btn:disabled {
@@ -303,26 +356,31 @@
 .code-editor-breadcrumbs {
   display: flex;
   align-items: center;
-  flex: 1;
+  font-size: 13px;
+  color: var(--text-color);
   overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0; /* Allow flexbox to shrink beyond content size */
 }
 
 .breadcrumb-item {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 13px;
+  padding: 2px 4px;
   cursor: pointer;
+  background: none;
+  border: none;
   color: var(--text-color);
-  max-width: 200px;
+  font-size: 13px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 150px;
+  transition: none;
 }
 
 .breadcrumb-item:hover {
-  background-color: var(--hover-color);
+  color: var(--primary-color);
 }
 
 .breadcrumb-separator {
@@ -351,22 +409,26 @@
 
 /* Problem highlight toggle */
 .problem-highlight-toggle {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--card-background);
+  color: var(--text-color);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background-color: var(--card-background);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  justify-content: center;
   cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s ease;
-  color: var(--text-color);
-  margin-left: auto;
+  z-index: 10;
+  transition: none;
+  border: 1px solid var(--border-color);
 }
 
 .problem-highlight-toggle:hover {
   background-color: var(--hover-color);
+  transform: none;
 }
 
 .problem-highlight-toggle.active {
@@ -383,6 +445,8 @@
   
   .code-editor-actions button {
     width: 32px;
+    height: 32px;
+    padding: 6px;
   }
   
   .code-editor-breadcrumbs {
@@ -390,5 +454,132 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  
+  .code-editor-filename {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .code-editor-header,
+  .code-editor-nav {
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 576px) {
+  .code-editor-breadcrumbs {
+    max-width: 120px;
+  }
+  
+  .code-editor-filename {
+    max-width: 100px;
+  }
+  
+  .code-editor-actions {
+    gap: 4px;
+  }
+  
+  .editor-action-btn,
+  .editor-nav-btn {
+    width: 28px;
+    height: 28px;
+    padding: 4px;
+  }
+  
+  .editor-settings-panel {
+    padding: 8px;
+  }
+  
+  .editor-setting {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  
+  .editor-setting label {
+    margin-bottom: 4px;
+    margin-right: 0;
+  }
+  
+  .editor-setting select,
+  .editor-setting input[type="number"] {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .code-editor-actions {
+    position: relative;
+  }
+  
+  .editor-action-btn:nth-child(3) {
+    display: none;
+  }
+  
+  .code-editor-nav-actions {
+    gap: 2px;
+  }
+  
+  .breadcrumb-item {
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .code-editor-filename {
+    max-width: 80px;
+  }
+  
+  .code-editor-status-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 4px 8px;
+  }
+  
+  .code-editor-status-bar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 400px) {
+  .code-editor-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .code-editor-nav-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .code-editor-breadcrumbs {
+    width: 100%;
+    margin-top: 4px;
+  }
+  
+  .code-editor-actions {
+    gap: 2px;
+  }
+  
+  .editor-action-btn, 
+  .editor-nav-btn {
+    width: 26px;
+    height: 26px;
+    padding: 3px;
+    min-width: unset;
+  }
+  
+  .editor-action-btn:last-child {
+    margin-left: 4px;
+  }
+  
+  .code-editor-content {
+    height: calc(100% - 110px); /* Adjust for taller stacked header */
   }
 } 

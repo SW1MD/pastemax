@@ -13,6 +13,21 @@
   bottom: 0;
 }
 
+/* Theme-specific styling */
+.code-editor-container.light-theme {
+  --editor-bg: var(--background-color);
+  --editor-text: var(--text-color);
+  --editor-line-numbers-bg: var(--sidebar-background);
+  --editor-line-numbers-text: var(--secondary-color);
+}
+
+.code-editor-container.dark-theme {
+  --editor-bg: var(--background-color);
+  --editor-text: var(--text-color);
+  --editor-line-numbers-bg: var(--sidebar-background);
+  --editor-line-numbers-text: var(--secondary-color);
+}
+
 .code-editor-header {
   display: flex;
   justify-content: space-between;
@@ -105,6 +120,51 @@
   line-height: 1.5 !important;
 }
 
+/* Custom scrollbar styles for Ace editor */
+.ace_scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background-color: transparent;
+}
+
+.ace_scrollbar::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track-color);
+}
+
+.ace_scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 4px;
+  transition: none;
+}
+
+.ace_editor:hover .ace_scrollbar::-webkit-scrollbar-thumb,
+.ace_editor:focus .ace_scrollbar::-webkit-scrollbar-thumb,
+.ace_editor:active .ace_scrollbar::-webkit-scrollbar-thumb,
+.ace_scrollbar:hover::-webkit-scrollbar-thumb,
+.ace_scrollbar:focus::-webkit-scrollbar-thumb,
+.ace_scrollbar:active::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-active-color);
+}
+
+.ace_scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+/* Firefox scrollbar styles */
+.ace_scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
+}
+
+.ace_editor:hover .ace_scrollbar,
+.ace_editor:focus .ace_scrollbar,
+.ace_editor:active .ace_scrollbar,
+.ace_scrollbar:hover,
+.ace_scrollbar:focus,
+.ace_scrollbar:active {
+  scrollbar-color: var(--scrollbar-thumb-active-color) var(--scrollbar-track-color);
+}
+
 /* Make sure the editor takes full height */
 #code-editor {
   width: 100% !important;
@@ -119,6 +179,66 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - 40px); /* Account for the header */
+}
+
+/* Custom scrollbar styles for Monaco editor */
+.monaco-editor .scrollbar {
+  /* These styles will make Monaco editor's scrollbars invisible until used */
+}
+
+.monaco-editor .scrollbar .slider {
+  background-color: var(--scrollbar-thumb-color) !important;
+  border-radius: 4px !important;
+  transition: none !important;
+}
+
+.monaco-editor:hover .scrollbar .slider,
+.monaco-editor:focus .scrollbar .slider,
+.monaco-editor:active .scrollbar .slider {
+  background-color: var(--scrollbar-thumb-active-color) !important;
+}
+
+.monaco-editor .scrollbar .slider:hover {
+  background-color: var(--scrollbar-thumb-hover-color) !important;
+}
+
+/* Custom scrollbars for any overflow content in the editor */
+.code-editor-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background-color: transparent;
+}
+
+.code-editor-content::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track-color);
+}
+
+.code-editor-content::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 4px;
+  transition: none;
+}
+
+.code-editor-content:hover::-webkit-scrollbar-thumb,
+.code-editor-content:focus::-webkit-scrollbar-thumb,
+.code-editor-content:active::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-active-color);
+}
+
+.code-editor-content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+/* Firefox scrollbar styles */
+.code-editor-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
+}
+
+.code-editor-content:hover,
+.code-editor-content:focus,
+.code-editor-content:active {
+  scrollbar-color: var(--scrollbar-thumb-active-color) var(--scrollbar-track-color);
 }
 
 .code-editor-tip {
@@ -224,16 +344,33 @@
   justify-content: center;
   cursor: pointer;
   z-index: 100;
-  transition: all 0.2s ease;
+  transition: none;
   box-shadow: 0 2px 8px var(--shadow-color);
 }
 
 .editor-problem-highlight-toggle:hover {
-  transform: scale(1.05);
+  transform: none;
   background-color: var(--hover-color);
 }
 
 .editor-problem-highlight-toggle.active {
   background-color: var(--primary-color);
   color: white;
+}
+
+/* Monaco editor overrides */
+.monaco-editor {
+  background-color: var(--editor-bg) !important;
+}
+
+.monaco-editor .monaco-editor-background {
+  background-color: var(--editor-bg) !important;
+}
+
+.monaco-editor .margin {
+  background-color: var(--editor-line-numbers-bg) !important;
+}
+
+.monaco-editor .line-numbers {
+  color: var(--editor-line-numbers-text) !important;
 }

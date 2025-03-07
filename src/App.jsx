@@ -6,6 +6,7 @@ import WebBrowser from "./components/WebBrowser";
 import ResizeHandle from "./components/ResizeHandle";
 import { FileData } from "./types/FileTypes";
 import CodeEditor from './components/CodeEditor';
+import PromptEngine from './components/PromptEngine';
 
 // Keys for localStorage
 const STORAGE_KEYS = {
@@ -1367,10 +1368,7 @@ const App = () => {
                   )}
 
                   {activePage === "prompt" && (
-                    <div className="prompt-container">
-                      <h2>Prompt Engineering</h2>
-                      <p>This page will contain prompt engineering tools.</p>
-                    </div>
+                    <PromptEngine />
                   )}
 
                   {activePage === "edit" && (

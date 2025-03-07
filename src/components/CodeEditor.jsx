@@ -37,7 +37,7 @@ const CodeEditor = ({
       const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       
       const updateTheme = (e) => {
-        setCurrentTheme(e.matches ? 'dark' : 'github');
+        setCurrentTheme(e.matches ? 'tomorrow_night' : 'github');
       };
       
       // Set initial theme
@@ -283,7 +283,7 @@ const CodeEditor = ({
   };
 
   return (
-    <div className={`code-editor-container theme-${currentTheme}`}>
+    <div className={`code-editor-container ${currentTheme === 'tomorrow_night' || currentTheme === 'dark' ? 'dark-theme' : 'light-theme'}`}>
       <div className="code-editor-nav">
         <div className="code-editor-nav-actions">
           <button 
@@ -329,15 +329,11 @@ const CodeEditor = ({
       <div className="code-editor-header">
         <div className="code-editor-file-info">
           <div className="code-editor-icon">
-            {fileType === 'js' || fileType === 'jsx' || fileType === 'ts' || fileType === 'tsx' ? (
-              <Code size={18} />
-            ) : (
-              <FileText size={18} />
-            )}
+            {getLanguage() === 'plaintext' ? <FileText size={18} /> : <Code size={18} />}
           </div>
           <div className="code-editor-filename">
             {fileName}
-            {isModified && <span className="modified-indicator">*</span>}
+            {isModified && <span className="modified-indicator">•</span>}
           </div>
         </div>
         
@@ -433,7 +429,7 @@ const CodeEditor = ({
           height="100%"
           language={getLanguage()}
           value={editorContent}
-          theme={currentTheme === 'dark' ? 'vs-dark' : 'vs-light'}
+          theme={currentTheme === 'tomorrow_night' || currentTheme === 'dark' ? 'vs-dark' : 'vs-light'}
           options={getEditorOptions()}
           onChange={(value) => {
             setEditorContent(value);

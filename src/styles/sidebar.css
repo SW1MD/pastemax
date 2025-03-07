@@ -2,17 +2,16 @@
 
 /* Left sidebar styles */
 .sidebar {
-  width: 260px;
   background-color: var(--sidebar-background);
-  border-right: 1px solid var(--border-color);
+  width: 250px;
   height: 100%;
   overflow-y: auto;
-  transition: width 0.2s ease;
-  flex-shrink: 0;
+  overflow-x: hidden;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  z-index: 15; /* Higher than browser but lower than content */
+  transition: none; /* Remove width transition */
+  z-index: 10;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
 }
 
 .sidebar.collapsed {

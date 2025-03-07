@@ -138,13 +138,34 @@ body {
 
 /* Dark Theme Special Adjustments */
 [data-theme="dark"] .code-editor-line-numbers {
-  background-color: #1e1e1e;
-  color: #6a737d;
+  background-color: var(--sidebar-background);
+  color: var(--secondary-color);
 }
 
 [data-theme="dark"] .code-editor-textarea {
-  background-color: #1e1e1e;
-  color: #e0e0e0;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+/* Theme classes for editor container */
+.code-editor-container.light-theme {
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.code-editor-container.dark-theme {
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.code-editor-container.dark-theme .code-editor-line-numbers {
+  background-color: var(--sidebar-background);
+  color: var(--secondary-color);
+}
+
+.code-editor-container.dark-theme .code-editor-textarea {
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 
 /* Custom Scrollbar Styles */
@@ -164,7 +185,7 @@ body {
 ::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
   border-radius: 4px;
-  transition: background-color 0.3s ease;
+  transition: none; /* Remove transition */
 }
 
 /* Show scrollbar thumb when scrolling or hovering */
