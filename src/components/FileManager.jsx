@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FilePlus, FolderPlus, X, Check, ChevronRight, ChevronLeft, Folder, File } from 'lucide-react';
+import { FilePlus, FolderPlus, X, Check, ChevronRight, ChevronLeft, Folder, FolderOpen, File, RefreshCw } from 'lucide-react';
 
 const FileManager = ({ 
   currentDirectory, 
@@ -64,7 +64,7 @@ const FileManager = ({
         <div className="file-manager-actions">
           <div className="file-manager-nav-actions">
             <button 
-              className="file-manager-nav-btn"
+              className={`file-manager-nav-btn ${!canNavigateBack ? 'disabled' : ''}`}
               onClick={navigateBack}
               disabled={!canNavigateBack}
               title="Navigate back"
@@ -72,7 +72,7 @@ const FileManager = ({
               <ChevronLeft size={16} />
             </button>
             <button 
-              className="file-manager-nav-btn"
+              className={`file-manager-nav-btn ${!canNavigateForward ? 'disabled' : ''}`}
               onClick={navigateForward}
               disabled={!canNavigateForward}
               title="Navigate forward"
@@ -256,7 +256,7 @@ const FileManager = ({
                       setShowRecentPanel(false);
                     }}
                   >
-                    <Folder size={16} />
+                    <FolderOpen size={16} />
                     <span className="recent-item-name">{folder.split('/').pop()}</span>
                   </div>
                 ))}
