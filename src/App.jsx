@@ -7,6 +7,7 @@ import ResizeHandle from "./components/ResizeHandle";
 import { FileData } from "./types/FileTypes";
 import CodeEditor from './components/CodeEditor';
 import PromptEngine from './components/PromptEngine';
+import EditorPage from './components/EditorPage';
 
 // Keys for localStorage
 const STORAGE_KEYS = {
@@ -1075,68 +1076,77 @@ const App = () => {
   const [fileHistory, setFileHistory] = useState([]);
   const [currentFolder, setCurrentFolder] = useState(''); // Track current folder for navigation
 
-  // Function to open a file in the editor
+  // Add a recentFiles and recentFolders state
+  const [recentFiles, setRecentFiles] = useState([]);
+  const [recentFolders, setRecentFolders] = useState([]);
+
+  // Add isLoading state
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Update openFile to track recent files
   const openFile = async (filePath, isFolder = false) => {
     try {
+      // If it's a folder, update currentDirectory and return
       if (isFolder) {
-        // Handle folder navigation
-        handleFolderNavigation(filePath);
+        setCurrentDirectory(filePath);
+        
+        // Add to recent folders
+        if (!recentFolders.includes(filePath)) {
+          const updatedRecentFolders = [filePath, ...recentFolders.filter(f => f !== filePath)].slice(0, 10);
+          setRecentFolders(updatedRecentFolders);
+          localStorage.setItem('pastemax-recent-folders', JSON.stringify(updatedRecentFolders));
+        }
+        
         return;
       }
       
-      // Add to file history
-      setFileHistory(prev => {
-        // Remove the file if it already exists in history
-        const filtered = prev.filter(p => p !== filePath);
-        // Add it to the end
-        return [...filtered, filePath];
-      });
+      // Show loading indicator
+      setIsLoading(true);
       
-      // Always refresh the file to get the latest content from disk
-      try {
-        // Use refreshFile to get the most up-to-date content and token count
-        const refreshedFile = await window.electron.refreshFile(filePath);
-        
-        if (refreshedFile) {
-          // Update the file in our application state
-          setAllFiles(prevFiles => 
-            prevFiles.map(file => 
-              file.path === filePath ? refreshedFile : file
-            )
-          );
-          
-          // Set current file state
-          setCurrentFile(filePath);
-          setFileContent(refreshedFile.content);
-          setIsEditing(true);
-          
-          // Set current folder to the parent folder of this file
-          const parentFolder = filePath.substring(0, filePath.lastIndexOf('/'));
-          setCurrentFolder(parentFolder);
-          
-          // Switch to edit page if not already there
-          setActivePage("edit");
+      // Read file content
+      let fileContent = "";
+      if (isElectron) {
+        try {
+          const result = await window.electron.ipcRenderer.invoke("read-file", filePath);
+          if (result.success) {
+            fileContent = result.content;
+          } else {
+            console.error("Error reading file:", result.error);
+            return;
+          }
+        } catch (err) {
+          console.error("Error invoking read-file:", err);
           return;
         }
-      } catch (refreshError) {
-        console.error('Error refreshing file from disk:', refreshError);
-        // If refresh fails, fall back to the original method
       }
       
-      // Fallback to original method if refresh fails
-      const content = await window.electron.readFile(filePath);
+      // Add to recent files
+      if (!recentFiles.includes(filePath)) {
+        const updatedRecentFiles = [filePath, ...recentFiles.filter(f => f !== filePath)].slice(0, 10);
+        setRecentFiles(updatedRecentFiles);
+        localStorage.setItem('pastemax-recent-files', JSON.stringify(updatedRecentFiles));
+      }
+      
+      // Set current file and content
       setCurrentFile(filePath);
-      setFileContent(content);
+      setFileContent(fileContent);
       setIsEditing(true);
-      
-      // Set current folder to the parent folder of this file
-      const parentFolder = filePath.substring(0, filePath.lastIndexOf('/'));
-      setCurrentFolder(parentFolder);
-      
-      // Switch to edit page if not already there
       setActivePage("edit");
+      setIsLoading(false);
+      
+      // Add to file history
+      const existingIndex = fileHistory.findIndex(f => f === filePath);
+      if (existingIndex !== -1) {
+        // Remove the existing entry to avoid duplicates
+        fileHistory.splice(existingIndex, 1);
+      }
+      
+      // Add to the beginning of history
+      setFileHistory([filePath, ...fileHistory].slice(0, 20));
+      
     } catch (error) {
-      console.error('Error opening file:', error);
+      console.error("Error opening file:", error);
+      setIsLoading(false);
     }
   };
 
@@ -1231,6 +1241,65 @@ const App = () => {
     } catch (error) {
       console.error('Error saving file:', error);
       return false;
+    }
+  };
+
+  // Load recent files and folders on component mount
+  useEffect(() => {
+    const savedRecentFiles = localStorage.getItem('pastemax-recent-files');
+    const savedRecentFolders = localStorage.getItem('pastemax-recent-folders');
+    
+    if (savedRecentFiles) {
+      try {
+        setRecentFiles(JSON.parse(savedRecentFiles));
+      } catch (e) {
+        console.error('Error parsing saved recent files:', e);
+      }
+    }
+    
+    if (savedRecentFolders) {
+      try {
+        setRecentFolders(JSON.parse(savedRecentFolders));
+      } catch (e) {
+        console.error('Error parsing saved recent folders:', e);
+      }
+    }
+  }, []);
+
+  // Define the handleFileCreationWithContent function
+  const handleFileCreationWithContent = (directory, fileName, content = '') => {
+    const fullPath = directory ? `${directory}/${fileName}` : fileName;
+    
+    if (isElectron) {
+      window.electron.ipcRenderer.send("create-file", {
+        folderPath: directory || selectedFolder,
+        fileName: fileName,
+        content: content
+      });
+      
+      // Add a listener for the response if not already listening
+      if (!window.electron.ipcRenderer.listenerCount('file-created')) {
+        window.electron.ipcRenderer.once('file-created', (event, result) => {
+          if (result.success) {
+            console.log("File created successfully:", result.file);
+            
+            // Add the new file to allFiles
+            setAllFiles(prevFiles => [...prevFiles, result.file]);
+            
+            // If content was provided, open the file for editing
+            if (content) {
+              setCurrentFile(fullPath);
+              setFileContent(content);
+              setIsEditing(true);
+            }
+            
+            // Refresh the file list
+            window.electron.ipcRenderer.send("request-file-list", selectedFolder);
+          } else {
+            console.error("Error creating file:", result.error);
+          }
+        });
+      }
     }
   };
 
@@ -1373,17 +1442,22 @@ const App = () => {
 
                   {activePage === "edit" && (
                     <div className="editor-view">
-                      <CodeEditor
+                      <EditorPage
                         filePath={currentFile}
                         content={fileContent}
+                        currentDirectory={currentDirectory || selectedFolder}
                         onSave={saveFile}
                         onClose={() => {
                           setIsEditing(false);
                           setActivePage("select");
                         }}
-                        theme={themeMode === 'dark' ? 'tomorrow_night' : 'github'}
+                        onCreateFile={handleFileCreationWithContent}
+                        onCreateFolder={handleCreateFolder}
                         onNavigate={navigateToFileFromEditor}
+                        theme={themeMode === 'dark' ? 'tomorrow_night' : 'github'}
                         fileHistory={fileHistory}
+                        recentFiles={recentFiles}
+                        recentFolders={recentFolders}
                       />
                     </div>
                   )}

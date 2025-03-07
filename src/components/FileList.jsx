@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import FileCard from "./FileCard";
-import CodeEditor from "./CodeEditor";
+import EditorPage from "./EditorPage";
 import ContextMenu from "./ContextMenu";
 import { Copy } from "lucide-react";
 
@@ -14,6 +14,8 @@ const FileList = ({
   problemHighlightingActive
 }) => {
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
+  const [recentFiles, setRecentFiles] = useState([]);
+  const [recentFolders, setRecentFolders] = useState([]);
 
   // Only show files that are in the selectedFiles array and not binary/skipped
   const displayableFiles = files.filter(
@@ -76,11 +78,13 @@ const FileList = ({
 
   // Ensure we have a proper file viewing handler
   const handleViewFile = (file) => {
-    // Helper function for readFile fallback - moved to function body root
     const fallbackToReadFile = () => {
       // If file.content is already available, we can use it directly
       if (file.content) {
         onViewFile(file);
+        
+        // Add to recent files
+        updateRecentFiles(file.path);
       } 
       // If we need to fetch content via electron
       else if (window.electron && window.electron.readFile) {
@@ -88,109 +92,190 @@ const FileList = ({
           .then(content => {
             const fileWithContent = {...file, content};
             onViewFile(fileWithContent);
+            
+            // Add to recent files
+            updateRecentFiles(file.path);
           })
           .catch(err => {
             console.error("Error reading file:", err);
             // Still try to open with whatever we have
             onViewFile(file);
+            
+            // Add to recent files anyway
+            updateRecentFiles(file.path);
           });
       } else {
         // Fallback
         onViewFile(file);
+        
+        // Add to recent files
+        updateRecentFiles(file.path);
       }
     };
-    
-    if (onViewFile && typeof onViewFile === 'function') {
-      // Always try to refresh the file from disk to get the latest content
-      if (window.electron && window.electron.refreshFile) {
-        window.electron.refreshFile(file.path)
-          .then(refreshedFile => {
-            // Update the file in the files array with refreshed content
-            const updatedFiles = files.map(f => 
-              f.path === file.path ? refreshedFile : f
-            );
-            
-            // Open the file with fresh content
+
+    // For refresh file if using electron
+    if (window.electron && window.electron.refreshFile) {
+      window.electron.refreshFile(file.path)
+        .then(refreshedFile => {
+          if (refreshedFile) {
             onViewFile(refreshedFile);
-          })
-          .catch(refreshError => {
-            console.error("Error refreshing file:", refreshError);
-            // Fall back to regular file reading if refresh fails
+            
+            // Add to recent files
+            updateRecentFiles(file.path);
+          } else {
             fallbackToReadFile();
-          });
-      } else {
-        // If refreshFile is not available, fall back to readFile
-        fallbackToReadFile();
-      }
+          }
+        })
+        .catch(err => {
+          console.error("Error refreshing file:", err);
+          fallbackToReadFile();
+        });
+    } else {
+      fallbackToReadFile();
     }
   };
 
-  // Add a function to handle saving files
-  const handleSaveFile = async (filePath, content) => {
-    try {
-      // Check if we have access to the electron API
-      if (window.electron && window.electron.writeFile) {
-        // Use the direct writeFile method instead of a custom implementation
-        const result = await window.electron.writeFile(filePath, content);
-        
-        if (result.success) {
-          // Update the file in the local files array
-          const updatedFiles = files.map(file => {
-            if (file.path === filePath) {
-              // Update the current file with new content
-              return {
-                ...file,
-                content: content
-              };
-            }
-            return file;
-          });
-          
-          // Update the viewedFile with the new content
-          if (viewedFile && viewedFile.path === filePath) {
-            onViewFile({
-              ...viewedFile,
-              content: content
-            });
-          }
-          
-          // Calculate tokens for the updated file
-          if (window.electron && window.electron.countTokens) {
-            try {
-              const tokenCount = await window.electron.countTokens(content);
-              // Further update the file with new token count
-              const fileWithTokens = updatedFiles.find(f => f.path === filePath);
-              if (fileWithTokens) {
-                fileWithTokens.tokenCount = tokenCount;
-              }
-            } catch (err) {
-              console.error("Error counting tokens:", err);
-            }
-          }
-        }
-        
-        return result.success;
-      } else {
-        console.error("Electron API not available for file saving");
+  // Handle saving the file if edited
+  const handleSaveFile = async (content) => {
+    if (viewedFile && window.electron) {
+      try {
+        await window.electron.writeFile(viewedFile.path, content);
+        // Update viewed file with new content
+        onViewFile({...viewedFile, content});
+        return true;
+      } catch (err) {
+        console.error("Error saving file:", err);
         return false;
       }
-    } catch (error) {
-      console.error("Error saving file:", error);
-      return false;
+    }
+    return false;
+  };
+  
+  // Handle file navigation
+  const handleNavigate = (filePath, isFolder) => {
+    if (isFolder) {
+      // Update recent folders
+      updateRecentFolders(filePath);
+      
+      // Here you would typically navigate to that folder
+      // but for now we'll just close the view
+      onCloseView();
+    } else {
+      // Find the file in our list
+      const file = files.find(f => f.path === filePath);
+      if (file) {
+        handleViewFile(file);
+      } else {
+        // Try to read it directly
+        if (window.electron && window.electron.readFile) {
+          window.electron.readFile(filePath)
+            .then(content => {
+              const fileObj = {
+                path: filePath,
+                name: filePath.split('/').pop(),
+                content,
+                tokenCount: 0, // We don't know the token count yet
+                isBinary: false,
+                isSkipped: false
+              };
+              onViewFile(fileObj);
+              
+              // Add to recent files
+              updateRecentFiles(filePath);
+            })
+            .catch(err => {
+              console.error("Error reading file:", err);
+            });
+        }
+      }
     }
   };
+  
+  // Update recent files
+  const updateRecentFiles = (filePath) => {
+    const updatedRecentFiles = [filePath, ...recentFiles.filter(f => f !== filePath)].slice(0, 10);
+    setRecentFiles(updatedRecentFiles);
+    localStorage.setItem('pastemax-recent-files', JSON.stringify(updatedRecentFiles));
+  };
+  
+  // Update recent folders
+  const updateRecentFolders = (folderPath) => {
+    const updatedRecentFolders = [folderPath, ...recentFolders.filter(f => f !== folderPath)].slice(0, 10);
+    setRecentFolders(updatedRecentFolders);
+    localStorage.setItem('pastemax-recent-folders', JSON.stringify(updatedRecentFolders));
+  };
+  
+  // Get the current directory from the viewed file path
+  const getCurrentDirectory = () => {
+    if (!viewedFile || !viewedFile.path) return '';
+    const pathParts = viewedFile.path.split('/');
+    pathParts.pop(); // Remove the filename
+    return pathParts.join('/');
+  };
+  
+  // Load recent files and folders on mount
+  React.useEffect(() => {
+    const savedRecentFiles = localStorage.getItem('pastemax-recent-files');
+    const savedRecentFolders = localStorage.getItem('pastemax-recent-folders');
+    
+    if (savedRecentFiles) {
+      try {
+        setRecentFiles(JSON.parse(savedRecentFiles));
+      } catch (e) {
+        console.error('Error parsing saved recent files:', e);
+      }
+    }
+    
+    if (savedRecentFolders) {
+      try {
+        setRecentFolders(JSON.parse(savedRecentFolders));
+      } catch (e) {
+        console.error('Error parsing saved recent folders:', e);
+      }
+    }
+  }, []);
 
-  // If a file is being viewed, show the code editor instead of the file list
+  // Define dummy file creation handlers (we don't actually create files here)
+  const handleCreateFile = (directory, fileName, content) => {
+    console.log(`Would create file ${fileName} in ${directory} with content length ${content?.length || 0}`);
+    // In a real implementation, this would create the file
+  };
+  
+  const handleCreateFolder = (directory, folderName) => {
+    console.log(`Would create folder ${folderName} in ${directory}`);
+    // In a real implementation, this would create the folder
+  };
+
+  // Track file history
+  const [fileHistory, setFileHistory] = React.useState([]);
+  
+  React.useEffect(() => {
+    if (viewedFile && viewedFile.path) {
+      setFileHistory(prev => {
+        // Remove the file if it already exists
+        const filtered = prev.filter(p => p !== viewedFile.path);
+        // Add it to the end
+        return [...filtered, viewedFile.path];
+      });
+    }
+  }, [viewedFile]);
+
   if (viewedFile) {
     return (
       <div className="full-height-editor">
-        <CodeEditor 
+        <EditorPage
           filePath={viewedFile.path}
           content={viewedFile.content}
-          onClose={onCloseView}
+          currentDirectory={getCurrentDirectory()}
           onSave={handleSaveFile}
-          readOnly={false}
-          problemHighlightingActive={problemHighlightingActive}
+          onClose={onCloseView}
+          onCreateFile={handleCreateFile}
+          onCreateFolder={handleCreateFolder}
+          onNavigate={handleNavigate}
+          theme={document.documentElement.getAttribute('data-theme') === 'dark' ? 'tomorrow_night' : 'github'}
+          fileHistory={fileHistory}
+          recentFiles={recentFiles}
+          recentFolders={recentFolders}
         />
       </div>
     );

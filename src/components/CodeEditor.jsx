@@ -11,7 +11,8 @@ const CodeEditor = ({
   theme = 'auto',
   onNavigate = null,
   fileHistory = [],
-  problemHighlightingActive = false
+  problemHighlightingActive = false,
+  hideNavigation = false
 }) => {
   const [editorContent, setEditorContent] = useState(content || '');
   const [fileName, setFileName] = useState('');
@@ -284,47 +285,49 @@ const CodeEditor = ({
 
   return (
     <div className={`code-editor-container ${currentTheme === 'tomorrow_night' || currentTheme === 'dark' ? 'dark-theme' : 'light-theme'}`}>
-      <div className="code-editor-nav">
-        <div className="code-editor-nav-actions">
-          <button 
-            className="editor-nav-btn"
-            onClick={navigateBack}
-            disabled={historyIndex <= 0}
-            title="Navigate back"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button 
-            className="editor-nav-btn"
-            onClick={navigateForward}
-            disabled={historyIndex >= fileHistory.length - 1}
-            title="Navigate forward"
-          >
-            <ChevronRight size={16} />
-          </button>
-          <button 
-            className="editor-nav-btn"
-            onClick={navigateToParentFolder}
-            title="Go to parent folder"
-          >
-            <Folder size={16} />
-          </button>
+      {!hideNavigation && (
+        <div className="code-editor-nav">
+          <div className="code-editor-nav-actions">
+            <button 
+              className="editor-nav-btn"
+              onClick={navigateBack}
+              disabled={historyIndex <= 0}
+              title="Navigate back"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button 
+              className="editor-nav-btn"
+              onClick={navigateForward}
+              disabled={historyIndex >= fileHistory.length - 1}
+              title="Navigate forward"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <button 
+              className="editor-nav-btn"
+              onClick={navigateToParentFolder}
+              title="Go to parent folder"
+            >
+              <Folder size={16} />
+            </button>
+          </div>
+          
+          <div className="code-editor-breadcrumbs">
+            {fileBreadcrumbs.map((crumb, index) => (
+              <React.Fragment key={index}>
+                {index > 0 && <span className="breadcrumb-separator">/</span>}
+                <button 
+                  className="breadcrumb-item"
+                  onClick={() => navigateToBreadcrumb(crumb.path)}
+                >
+                  {crumb.name}
+                </button>
+              </React.Fragment>
+            ))}
+          </div>
         </div>
-        
-        <div className="code-editor-breadcrumbs">
-          {fileBreadcrumbs.map((crumb, index) => (
-            <React.Fragment key={index}>
-              {index > 0 && <span className="breadcrumb-separator">/</span>}
-              <button 
-                className="breadcrumb-item"
-                onClick={() => navigateToBreadcrumb(crumb.path)}
-              >
-                {crumb.name}
-              </button>
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
+      )}
       
       <div className="code-editor-header">
         <div className="code-editor-file-info">
