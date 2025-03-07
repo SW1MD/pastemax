@@ -219,18 +219,38 @@ const CodeEditor = ({
   
   // Save file content
   const handleSave = async () => {
-    if (!onSave || !isModified) return;
+    if (!onSave) return;
     
     try {
       setIsSaving(true);
-      await onSave(filePath, editorContent);
-      setIsModified(false);
-      setShowSaveSuccess(true);
       
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setShowSaveSuccess(false);
-      }, 3000);
+      // If no file path, show save dialog
+      if (!filePath) {
+        if (window.electron) {
+          const result = await window.electron.showSaveDialog();
+          if (!result.canceled && result.filePath) {
+            // For new files, pass both content and the selected path
+            await onSave(editorContent, result.filePath);
+            setIsModified(false);
+            setShowSaveSuccess(true);
+            
+            // Hide success message after 3 seconds
+            setTimeout(() => {
+              setShowSaveSuccess(false);
+            }, 3000);
+          }
+        }
+      } else {
+        // For existing files, pass both content and current path
+        await onSave(editorContent, filePath);
+        setIsModified(false);
+        setShowSaveSuccess(true);
+        
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          setShowSaveSuccess(false);
+        }, 3000);
+      }
     } catch (error) {
       console.error("Error saving file:", error);
       // TODO: Show error message

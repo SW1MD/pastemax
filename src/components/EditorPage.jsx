@@ -20,9 +20,6 @@ const EditorPage = ({
   const [isNewFile, setIsNewFile] = useState(!filePath);
   const [editorContent, setEditorContent] = useState(content || '');
   const [fileName, setFileName] = useState('');
-  const [showNewFileForm, setShowNewFileForm] = useState(false);
-  const [newFileName, setNewFileName] = useState('');
-  const [error, setError] = useState('');
   const [historyIndex, setHistoryIndex] = useState(-1);
   
   useEffect(() => {
@@ -57,29 +54,38 @@ const EditorPage = ({
     onCreateFolder(directory, name);
   };
   
-  const handleSave = async () => {
-    if (isNewFile && !newFileName.trim() && showNewFileForm) {
-      setError('File name is required');
-      return;
-    }
-    
-    if (isNewFile && showNewFileForm) {
-      // Save new file with provided name
-      onCreateFile(currentDirectory, newFileName, editorContent);
-      setShowNewFileForm(false);
-      setNewFileName('');
-    } else {
-      // Save existing file
-      await onSave(editorContent);
-    }
-  };
-  
-  const handleEditorSave = async (content) => {
-    if (isNewFile) {
-      setEditorContent(content);
-      setShowNewFileForm(true);
-    } else {
-      await onSave(content);
+  const handleEditorSave = async (content, newFilePath) => {
+    try {
+      if (isNewFile || newFilePath) {
+        // For new files, use the provided path from the save dialog
+        const saveFilePath = newFilePath || filePath;
+        if (!saveFilePath) {
+          console.error("No file path provided for save");
+          return;
+        }
+        // For new files, create them first
+        if (isNewFile) {
+          // Handle absolute paths correctly
+          const normalizedPath = saveFilePath.replace(/\\/g, '/');
+          const lastSlashIndex = normalizedPath.lastIndexOf('/');
+          const directory = lastSlashIndex > -1 ? normalizedPath.substring(0, lastSlashIndex) : '';
+          const filename = lastSlashIndex > -1 ? normalizedPath.substring(lastSlashIndex + 1) : normalizedPath;
+          
+          // If directory is absolute path (starts with C:, D:, etc), use it as is
+          const finalDirectory = /^[A-Za-z]:/.test(directory) ? directory : currentDirectory + '/' + directory;
+          
+          await onCreateFile(finalDirectory, filename, content);
+        } else {
+          // For files with a new path (Save As), just save
+          await onSave(content, saveFilePath);
+        }
+        setIsNewFile(false);
+      } else {
+        // For existing files, just save the content
+        await onSave(content, filePath);
+      }
+    } catch (error) {
+      console.error("Error saving file:", error);
     }
   };
   
@@ -136,51 +142,6 @@ const EditorPage = ({
     return crumbs;
   };
   
-  const renderNewFileForm = () => (
-    <div className="new-file-form">
-      <div className="new-file-form-header">
-        <h3>Save New File</h3>
-      </div>
-      <div className="new-file-form-content">
-        <div className="new-file-form-field">
-          <label>File Name:</label>
-          <input
-            type="text"
-            value={newFileName}
-            onChange={(e) => setNewFileName(e.target.value)}
-            placeholder="e.g., index.js"
-            autoFocus
-          />
-        </div>
-        
-        {error && <div className="new-file-form-error">{error}</div>}
-        
-        <div className="new-file-form-location">
-          <span>Location:</span>
-          <span className="new-file-path">{currentDirectory || '/'}</span>
-        </div>
-        
-        <div className="new-file-form-actions">
-          <button 
-            className="cancel-btn"
-            onClick={() => setShowNewFileForm(false)}
-          >
-            Cancel
-          </button>
-          <button 
-            className="save-btn"
-            onClick={handleSave}
-          >
-            <Save size={16} />
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-  
-  const breadcrumbs = getBreadcrumbs();
-  
   return (
     <div className="editor-page">
       <FileManager
@@ -195,11 +156,9 @@ const EditorPage = ({
         navigateToParentFolder={navigateToParentFolder}
         canNavigateBack={historyIndex > 0}
         canNavigateForward={historyIndex < fileHistory.length - 1}
-        breadcrumbs={breadcrumbs}
+        breadcrumbs={getBreadcrumbs()}
         currentFilePath={filePath}
       />
-      
-      {showNewFileForm && renderNewFileForm()}
       
       <CodeEditor
         filePath={filePath}
@@ -209,7 +168,7 @@ const EditorPage = ({
         theme={theme}
         fileHistory={fileHistory}
         onNavigate={onNavigate}
-        hideNavigation={true} // Hide the navigation bar in CodeEditor
+        hideNavigation={true}
       />
     </div>
   );

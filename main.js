@@ -793,3 +793,25 @@ ipcMain.on("show-window", () => {
   }
 });
 
+// Handle save dialog
+ipcMain.on("show-save-dialog", (event) => {
+  dialog.showSaveDialog({
+    properties: ['createDirectory', 'showOverwriteConfirmation'],
+    filters: [
+      { name: 'All Files', extensions: ['*'] },
+      { name: 'Text Files', extensions: ['txt', 'md'] },
+      { name: 'JavaScript', extensions: ['js', 'jsx', 'ts', 'tsx'] },
+      { name: 'HTML', extensions: ['html', 'htm'] },
+      { name: 'CSS', extensions: ['css', 'scss', 'sass'] },
+      { name: 'JSON', extensions: ['json'] }
+    ]
+  }).then(result => {
+    event.sender.send("save-dialog-response", result);
+  }).catch(err => {
+    event.sender.send("save-dialog-response", { 
+      canceled: true, 
+      error: err.message 
+    });
+  });
+});
+

@@ -45,7 +45,8 @@ contextBridge.exposeInMainWorld("electron", {
       "write-file",
       "read-file",
       "count-tokens",
-      "refresh-file"
+      "refresh-file",
+      "show-save-dialog"
     ];
     if (validChannels.includes(channel)) {
       // Ensure data is serializable before sending
@@ -63,7 +64,8 @@ contextBridge.exposeInMainWorld("electron", {
       "file-saved",
       "file-read",
       "tokens-counted",
-      "file-refreshed"
+      "file-refreshed",
+      "save-dialog-response"
     ];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
@@ -73,6 +75,21 @@ contextBridge.exposeInMainWorld("electron", {
         func(...serializedArgs);
       });
     }
+  },
+  invoke: async (channel, ...args) => {
+    const validChannels = [
+      "read-file",
+      "write-file",
+      "create-file",
+      "create-folder",
+      "open-file",
+      "show-save-dialog"
+    ];
+    if (validChannels.includes(channel)) {
+      const serializedArgs = args.map(ensureSerializable);
+      return await ipcRenderer.invoke(channel, ...serializedArgs);
+    }
+    throw new Error(`Invalid channel: ${channel}`);
   },
   // For backward compatibility (but still ensure serialization)
   ipcRenderer: {
@@ -101,6 +118,10 @@ contextBridge.exposeInMainWorld("electron", {
         console.error(`Error removing listener for channel ${channel}:`, err);
       }
     },
+    invoke: async (channel, ...args) => {
+      const serializedArgs = args.map(ensureSerializable);
+      return await ipcRenderer.invoke(channel, ...serializedArgs);
+    }
   },
   writeFile: (filePath, content) => {
     return new Promise((resolve, reject) => {
@@ -195,6 +216,21 @@ contextBridge.exposeInMainWorld("electron", {
       
       // Send the request
       ipcRenderer.send('refresh-file', filePath);
+    });
+  },
+  showSaveDialog: () => {
+    return new Promise((resolve, reject) => {
+      // Set up a one-time listener for the response
+      const responseHandler = (_, response) => {
+        ipcRenderer.removeListener('save-dialog-response', responseHandler);
+        resolve(response);
+      };
+      
+      // Listen for the response
+      ipcRenderer.once('save-dialog-response', responseHandler);
+      
+      // Send the request
+      ipcRenderer.send('show-save-dialog');
     });
   }
 });
