@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { File, Folder, FolderOpen, FilePlus, FolderPlus, RefreshCw } from 'lucide-react';
+import { File, Folder, FolderOpen } from 'lucide-react';
 import Sidebar from "./components/Sidebar";
 import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
 import WebBrowser from "./components/WebBrowser";
-import ResizeHandle from "./components/ResizeHandle";
-import { FileData } from "./types/FileTypes";
-import CodeEditor from './components/CodeEditor';
 import PromptEngine from './components/PromptEngine';
 import EditorPage from './components/EditorPage';
 import FileManager from './components/FileManager';
@@ -33,8 +30,6 @@ const App = () => {
   const savedFiles = localStorage.getItem(STORAGE_KEYS.SELECTED_FILES);
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
-  const savedBrowserVisible = localStorage.getItem(STORAGE_KEYS.BROWSER_VISIBLE);
-  const savedBrowserUrl = localStorage.getItem(STORAGE_KEYS.BROWSER_URL);
   const savedProblemHighlight = localStorage.getItem(STORAGE_KEYS.PROBLEM_HIGHLIGHT);
   const savedViewMode = localStorage.getItem(STORAGE_KEYS.VIEW_MODE);
   const savedThemeMode = localStorage.getItem(STORAGE_KEYS.THEME_MODE);
@@ -45,11 +40,11 @@ const App = () => {
   const [selectedFiles, setSelectedFiles] = useState(
     savedFiles ? JSON.parse(savedFiles) : []
   );
-  const [sortOrder, setSortOrder] = useState(savedSortOrder || "tokens-desc");
+  const [sortOrder] = useState(savedSortOrder || "tokens-desc");
   const [searchTerm, setSearchTerm] = useState(savedSearchTerm || "");
   const [expandedNodes, setExpandedNodes] = useState({});
   const [displayedFiles, setDisplayedFiles] = useState([]);
-  const [copyStatus, setCopyStatus] = useState(false);
+  const [, setCopyStatus] = useState(false);
   const [processingStatus, setProcessingStatus] = useState({
     status: "idle",
     message: ""
@@ -68,7 +63,7 @@ const App = () => {
       ? "file://" + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + "/browser-home.html"
       : "/browser-home.html"
   );
-  const [problemHighlightingActive, setProblemHighlightingActive] = useState(
+  const [problemHighlightingActive] = useState(
     savedProblemHighlight === "true"
   );
 
@@ -368,22 +363,10 @@ const App = () => {
   };
 
   // Handle sort change
-  const handleSortChange = (newSort) => {
-    setSortOrder(newSort);
-    applyFiltersAndSort(allFiles, newSort, searchTerm);
-    setSortDropdownOpen(false); // Close dropdown after selection
-  };
 
   // Handle search change
-  const handleSearchChange = (newSearch) => {
-    setSearchTerm(newSearch);
-    applyFiltersAndSort(allFiles, sortOrder, newSearch);
-  };
 
   // Toggle sort dropdown
-  const toggleSortDropdown = () => {
-    setSortDropdownOpen(!sortDropdownOpen);
-  };
 
   // Calculate total tokens from selected files
   const calculateTotalTokens = () => {
@@ -427,37 +410,10 @@ const App = () => {
   };
 
   // Handle select all files
-  const selectAllFiles = () => {
-    const selectablePaths = displayedFiles
-      .filter((file) => !file.isBinary && !file.isSkipped)
-      .map((file) => file.path);
-
-    setSelectedFiles((prev) => {
-      const newSelection = [...prev];
-      selectablePaths.forEach((path) => {
-        if (!newSelection.includes(path)) {
-          newSelection.push(path);
-        }
-      });
-      return newSelection;
-    });
-  };
 
   // Handle deselect all files
-  const deselectAllFiles = () => {
-    const displayedPaths = displayedFiles.map((file) => file.path);
-    setSelectedFiles((prev) =>
-      prev.filter((path) => !displayedPaths.includes(path))
-    );
-  };
 
   // Sort options for the dropdown
-  const sortOptions = [
-    { value: "tokens-desc", label: "Tokens: High to Low" },
-    { value: "tokens-asc", label: "Tokens: Low to High" },
-    { value: "name-asc", label: "Name: A to Z" },
-    { value: "name-desc", label: "Name: Z to A" },
-  ];
 
   // Handle expand/collapse state changes
   const toggleExpanded = (nodeId) => {
@@ -521,7 +477,7 @@ const App = () => {
     };
   }, []);
 
-  const handleResizeMove = useCallback((e) => {
+  const handleResizeMove = useCallback(() => {
     // In a fixed-width approach, we don't need resize logic for the browser width
     // The CSS will now handle this with fixed dimensions
   }, [isResizing]);
@@ -593,11 +549,6 @@ const App = () => {
   }, []);
 
   // Toggle problem highlighting
-  const toggleProblemHighlighting = () => {
-    const newState = !problemHighlightingActive;
-    setProblemHighlightingActive(newState);
-    localStorage.setItem(STORAGE_KEYS.PROBLEM_HIGHLIGHT, newState.toString());
-  };
 
   // Toggle theme mode between light and dark
   const toggleThemeMode = () => {
@@ -762,7 +713,7 @@ const App = () => {
 
       // Convert the nested object structure to the TreeNode array format
       const convertToTreeNodes = (node, level = 0) => {
-        return Object.entries(node).map(([key, item]) => {
+        return Object.entries(node).map(([, item]) => {
           if (item.type === "file") {
             return {
               ...item,
@@ -1134,14 +1085,8 @@ const App = () => {
   };
 
   // Get folder icon based on expanded state
-  const getFolderIcon = (isExpanded) => {
-    return isExpanded ? <FolderOpen size={16} /> : <Folder size={16} />;
-  };
 
   // Get file icon based on extension
-  const getFileIcon = (fileName) => {
-    return <File size={16} />;
-  };
 
   // Handle folder creation
   const handleCreateFolder = (directory, folderName) => {

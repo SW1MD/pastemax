@@ -16,7 +16,7 @@ const Sidebar = ({
   const MAX_SIDEBAR_WIDTH = 250;
 
   // Handle mouse down for resizing
-  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleResizeStart = () => {
     setIsResizing(true);
   };
 

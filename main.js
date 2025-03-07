@@ -1,7 +1,7 @@
-const { app, BrowserWindow, ipcMain, dialog, session } = require("electron");
-const fs = require("fs");
-const path = require("path");
-const windowStateKeeper = require('electron-window-state');
+import { app, BrowserWindow, ipcMain, dialog, session } from "electron";
+import { existsSync, writeFileSync, statSync, mkdirSync, readFileSync, readdirSync } from "fs";
+import { join, extname, relative, basename } from "path";
+import windowStateKeeper from 'electron-window-state';
 
 // Add handling for the 'ignore' module
 let ignore;
@@ -31,7 +31,7 @@ try {
 }
 
 // Import the excluded files list
-const { excludedFiles, binaryExtensions } = require("./excluded-files");
+import { excludedFiles, binaryExtensions } from "./excluded-files";
 
 // Initialize the encoder once at startup with better error handling
 let encoder;
@@ -121,7 +121,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, "preload.js"),
+      preload: join(__dirname, "preload.js"),
       webviewTag: true,
       webSecurity: true,
       allowRunningInsecureContent: false,
@@ -200,7 +200,7 @@ function createWindow() {
       });
     }, 1000);
   } else {
-    const indexPath = path.join(__dirname, "dist", "index.html");
+    const indexPath = join(__dirname, "dist", "index.html");
     console.log(`Loading from built files at ${indexPath}`);
 
     // Use loadURL with file protocol for better path resolution
@@ -226,7 +226,7 @@ function createWindow() {
         });
       } else {
         // Retry with explicit file URL
-        const indexPath = path.join(__dirname, "dist", "index.html");
+        const indexPath = join(__dirname, "dist", "index.html");
         const indexUrl = `file://${indexPath}`;
         mainWindow.loadURL(indexUrl);
       }
@@ -285,10 +285,10 @@ ipcMain.on("open-folder", async (event) => {
 // Handle creating a new file
 ipcMain.on("create-file", (event, { folderPath, fileName }) => {
   try {
-    const filePath = path.join(folderPath, fileName);
+    const filePath = join(folderPath, fileName);
     
     // Check if file already exists
-    if (fs.existsSync(filePath)) {
+    if (existsSync(filePath)) {
       event.sender.send("file-created", { 
         success: false, 
         error: "File already exists" 
@@ -297,10 +297,10 @@ ipcMain.on("create-file", (event, { folderPath, fileName }) => {
     }
     
     // Create the file with empty content
-    fs.writeFileSync(filePath, "");
+    writeFileSync(filePath, "");
     
     // Read the file info to return
-    const stats = fs.statSync(filePath);
+    const stats = statSync(filePath);
     const fileData = {
       name: fileName,
       path: filePath,
@@ -309,7 +309,7 @@ ipcMain.on("create-file", (event, { folderPath, fileName }) => {
       size: stats.size,
       isBinary: false,
       isSkipped: false,
-      fileType: path.extname(fileName).slice(1) || "txt"
+      fileType: extname(fileName).slice(1) || "txt"
     };
     
     event.sender.send("file-created", { 
@@ -328,10 +328,10 @@ ipcMain.on("create-file", (event, { folderPath, fileName }) => {
 // Handle creating a new folder
 ipcMain.on("create-folder", (event, { folderPath, folderName }) => {
   try {
-    const newFolderPath = path.join(folderPath, folderName);
+    const newFolderPath = join(folderPath, folderName);
     
     // Check if folder already exists
-    if (fs.existsSync(newFolderPath)) {
+    if (existsSync(newFolderPath)) {
       event.sender.send("folder-created", { 
         success: false, 
         error: "Folder already exists" 
@@ -340,7 +340,7 @@ ipcMain.on("create-folder", (event, { folderPath, folderName }) => {
     }
     
     // Create the folder
-    fs.mkdirSync(newFolderPath);
+    mkdirSync(newFolderPath);
     
     event.sender.send("folder-created", { 
       success: true, 
@@ -358,10 +358,10 @@ ipcMain.on("create-folder", (event, { folderPath, folderName }) => {
 // Function to parse .gitignore file if it exists
 function loadGitignore(rootDir) {
   const ig = ignore();
-  const gitignorePath = path.join(rootDir, ".gitignore");
+  const gitignorePath = join(rootDir, ".gitignore");
 
-  if (fs.existsSync(gitignorePath)) {
-    const gitignoreContent = fs.readFileSync(gitignorePath, "utf8");
+  if (existsSync(gitignorePath)) {
+    const gitignoreContent = readFileSync(gitignorePath, "utf8");
     ig.add(gitignoreContent);
   }
 
@@ -376,7 +376,7 @@ function loadGitignore(rootDir) {
 
 // Check if file is binary based on extension
 function isBinaryFile(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
+  const ext = extname(filePath).toLowerCase();
   return BINARY_EXTENSIONS.includes(ext);
 }
 
@@ -406,15 +406,15 @@ function readFilesRecursively(dir, rootDir, ignoreFilter) {
   let results = [];
 
   try {
-    const dirents = fs.readdirSync(dir, { withFileTypes: true });
+    const dirents = readdirSync(dir, { withFileTypes: true });
 
     // Process directories first, then files
     const directories = [];
     const files = [];
 
     dirents.forEach((dirent) => {
-      const fullPath = path.join(dir, dirent.name);
-      const relativePath = path.relative(rootDir, fullPath);
+      const fullPath = join(dir, dirent.name);
+      const relativePath = relative(rootDir, fullPath);
 
       // Skip if the path is ignored
       if (ignoreFilter.ignores(relativePath)) {
@@ -430,7 +430,7 @@ function readFilesRecursively(dir, rootDir, ignoreFilter) {
 
     // Process directories first
     directories.forEach((dirent) => {
-      const fullPath = path.join(dir, dirent.name);
+      const fullPath = join(dir, dirent.name);
       // Recursively read subdirectory
       results = results.concat(
         readFilesRecursively(fullPath, rootDir, ignoreFilter),
@@ -439,10 +439,10 @@ function readFilesRecursively(dir, rootDir, ignoreFilter) {
 
     // Then process files
     files.forEach((dirent) => {
-      const fullPath = path.join(dir, dirent.name);
+      const fullPath = join(dir, dirent.name);
       try {
         // Get file stats for size
-        const stats = fs.statSync(fullPath);
+        const stats = statSync(fullPath);
         const fileSize = stats.size;
 
         // Skip files that are too large
@@ -473,11 +473,11 @@ function readFilesRecursively(dir, rootDir, ignoreFilter) {
             content: "",
             isBinary: true,
             isSkipped: false,
-            fileType: path.extname(fullPath).substring(1).toUpperCase(),
+            fileType: extname(fullPath).substring(1).toUpperCase(),
           });
         } else {
           // Read file content
-          const fileContent = fs.readFileSync(fullPath, "utf8");
+          const fileContent = readFileSync(fullPath, "utf8");
 
           // Calculate token count
           const tokenCount = countTokens(fileContent);
@@ -594,7 +594,7 @@ ipcMain.on("write-file", (event, { filePath, content }) => {
     console.log("Writing to file:", filePath);
     
     // Write content to file
-    fs.writeFileSync(filePath, content, 'utf8');
+    writeFileSync(filePath, content, 'utf8');
     
     // Report success
     event.sender.send("file-saved", { 
@@ -619,7 +619,7 @@ ipcMain.on("read-file", (event, filePath) => {
     console.log("Reading file:", filePath);
     
     // Read file content
-    const content = fs.readFileSync(filePath, 'utf8');
+    const content = readFileSync(filePath, 'utf8');
     
     // Report success with content
     event.sender.send("file-read", { 
@@ -663,7 +663,7 @@ ipcMain.on("count-tokens", (event, content) => {
 ipcMain.on("refresh-file", (event, filePath) => {
   try {
     // Check if file exists
-    if (!fs.existsSync(filePath)) {
+    if (!existsSync(filePath)) {
       event.sender.send("file-refreshed", { 
         success: false, 
         error: "File not found",
@@ -673,7 +673,7 @@ ipcMain.on("refresh-file", (event, filePath) => {
     }
     
     // Read file content
-    const stats = fs.statSync(filePath);
+    const stats = statSync(filePath);
     const fileSize = stats.size;
     
     // Skip files that are too large
@@ -681,7 +681,7 @@ ipcMain.on("refresh-file", (event, filePath) => {
       event.sender.send("file-refreshed", { 
         success: true, 
         file: {
-          name: path.basename(filePath),
+          name: basename(filePath),
           path: filePath,
           tokenCount: 0,
           size: fileSize,
@@ -702,19 +702,19 @@ ipcMain.on("refresh-file", (event, filePath) => {
       event.sender.send("file-refreshed", { 
         success: true, 
         file: {
-          name: path.basename(filePath),
+          name: basename(filePath),
           path: filePath,
           tokenCount: 0,
           size: fileSize,
           content: "",
           isBinary: true,
           isSkipped: false,
-          fileType: path.extname(filePath).substring(1).toUpperCase(),
+          fileType: extname(filePath).substring(1).toUpperCase(),
         }
       });
     } else {
       // Read file content
-      const fileContent = fs.readFileSync(filePath, "utf8");
+      const fileContent = readFileSync(filePath, "utf8");
       
       // Calculate token count
       const tokenCount = countTokens(fileContent);
@@ -723,7 +723,7 @@ ipcMain.on("refresh-file", (event, filePath) => {
       event.sender.send("file-refreshed", { 
         success: true, 
         file: {
-          name: path.basename(filePath),
+          name: basename(filePath),
           path: filePath,
           content: fileContent,
           tokenCount: tokenCount,
@@ -745,7 +745,7 @@ ipcMain.on("refresh-file", (event, filePath) => {
 
 // Check if a file should be excluded by default, using glob matching
 function shouldExcludeByDefault(filePath, rootDir) {
-  const relativePath = path.relative(rootDir, filePath);
+  const relativePath = relative(rootDir, filePath);
   const relativePathNormalized = relativePath.replace(/\\/g, "/"); // Normalize for consistent pattern matching
 
   // Use the ignore package to do glob pattern matching
@@ -764,7 +764,7 @@ ipcMain.on("open-file", (event) => {
     if (!result.canceled && result.filePaths.length > 0) {
       const filePath = result.filePaths[0];
       try {
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = readFileSync(filePath, 'utf8');
         event.sender.send("file-opened", { 
           success: true, 
           path: filePath,

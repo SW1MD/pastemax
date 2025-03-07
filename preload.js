@@ -1,5 +1,5 @@
 // Preload script
-const { contextBridge, ipcRenderer } = require("electron");
+import { contextBridge, ipcRenderer } from "electron";
 
 // Helper function to ensure data is serializable
 function ensureSerializable(data) {

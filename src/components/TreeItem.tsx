@@ -13,7 +13,7 @@ const TreeItem = ({
   toggleExpanded,
 }: TreeItemProps) => {
   const { id, name, path, type, level, isExpanded, fileData, children } = node;
-  const checkboxRef = useRef<HTMLInputElement>(null);
+  const checkboxRef = useRef(null);
 
   const isSelected = type === "file" && selectedFiles.includes(path);
 
@@ -71,7 +71,7 @@ const TreeItem = ({
     toggleExpanded(id);
   };
 
-  const handleItemClick = (e: { stopPropagation: () => void }) => {
+  const handleItemClick = () => {
     if (type === "directory") {
       toggleExpanded(id);
     } else if (type === "file" && !isDisabled) {
