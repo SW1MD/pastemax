@@ -8,16 +8,15 @@ const Sidebar = ({
   activePage = "select",
   setActivePage = () => {},
 }: SidebarProps) => {
-  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const [sidebarWidth, setSidebarWidth] = useState(150);
   const [isResizing, setIsResizing] = useState(false);
 
-  // Min and max width constraints
-  const MIN_SIDEBAR_WIDTH = 200;
-  const MAX_SIDEBAR_WIDTH = 500;
+  // Minimum and maximum sidebar widths
+  const MIN_SIDEBAR_WIDTH = 100;
+  const MAX_SIDEBAR_WIDTH = 250;
 
   // Handle mouse down for resizing
-  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    e.preventDefault();
+  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
     setIsResizing(true);
   };
 

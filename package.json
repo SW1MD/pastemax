@@ -105,6 +105,7 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "ace-builds": "^1.39.0",
+    "electron-window-state": "^5.0.3",
     "gpt-3-encoder": "^1.1.4",
     "ignore": "^7.0.3",
     "lucide-react": "^0.477.0",

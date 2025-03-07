@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, session } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const windowStateKeeper = require('electron-window-state');
 
 // Add handling for the 'ignore' module
 let ignore;
@@ -102,23 +103,52 @@ const BINARY_EXTENSIONS = [
 // Max file size to read (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+let mainWindow = null;
+
 function createWindow() {
-  const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+  // Load the previous state with fallback to defaults
+  const mainWindowState = windowStateKeeper({
+    defaultWidth: 1200,
+    defaultHeight: 800
+  });
+
+  mainWindow = new BrowserWindow({
+    x: mainWindowState.x,
+    y: mainWindowState.y,
+    width: mainWindowState.width,
+    height: mainWindowState.height,
+    show: false, // Don't show until ready
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
-      webviewTag: true, // Enable webview tag support
-      webSecurity: true, // Keep security on
+      webviewTag: true,
+      webSecurity: true,
       allowRunningInsecureContent: false,
+      backgroundThrottling: false, // Prevent throttling when hidden
       devTools: {
-        // Add these settings to prevent Autofill warnings
         isDevToolsExtension: false,
         htmlFullscreen: false,
       },
     },
+  });
+
+  // Let us register listeners on the window, so we can update the state
+  mainWindowState.manage(mainWindow);
+
+  // Hide window instead of closing
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide(); // Just hide the window, don't minimize
+      return false;
+    }
+    return true;
+  });
+
+  // Show window when ready
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
   });
 
   // Configure session permissions
@@ -208,10 +238,23 @@ app.whenReady().then(() => {
   createWindow();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    // Show window if exists, create if doesn't
+    if (mainWindow === null) {
+      createWindow();
+    } else {
+      // Restore and focus the window
+      mainWindow.restore();
+      mainWindow.focus();
+    }
   });
 });
 
+// Set quitting flag before quit
+app.on('before-quit', () => {
+  app.isQuitting = true;
+});
+
+// Handle window-all-closed
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -709,3 +752,44 @@ function shouldExcludeByDefault(filePath, rootDir) {
   const ig = ignore().add(excludedFiles);
   return ig.ignores(relativePathNormalized);
 }
+
+// Handle file opening dialog
+ipcMain.on("open-file", (event) => {
+  dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  }).then(result => {
+    if (!result.canceled && result.filePaths.length > 0) {
+      const filePath = result.filePaths[0];
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        event.sender.send("file-opened", { 
+          success: true, 
+          path: filePath,
+          content: content
+        });
+      } catch (err) {
+        event.sender.send("file-opened", { 
+          success: false, 
+          error: err.message,
+          path: filePath
+        });
+      }
+    }
+  }).catch(err => {
+    event.sender.send("file-opened", { 
+      success: false, 
+      error: err.message 
+    });
+  });
+});
+
+// Add tray click handler if needed
+ipcMain.on("show-window", () => {
+  if (mainWindow) {
+    mainWindow.show();
+  }
+});
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Copy, Download, Settings, Code, FileText, Check, ChevronLeft, ChevronRight, Home, Folder } from 'lucide-react';
+import { Save, Copy, Settings, Code, FileText, Check, ChevronLeft, ChevronRight, Home, Folder, FolderOpen } from 'lucide-react';
 import { Editor } from '@monaco-editor/react';
 
 const CodeEditor = ({ 
@@ -12,7 +12,8 @@ const CodeEditor = ({
   onNavigate = null,
   fileHistory = [],
   problemHighlightingActive = false,
-  hideNavigation = false
+  hideNavigation = false,
+  onOpenFile = null
 }) => {
   const [editorContent, setEditorContent] = useState(content || '');
   const [fileName, setFileName] = useState('');
@@ -104,12 +105,12 @@ const CodeEditor = ({
   
   // Update content when prop changes
   useEffect(() => {
-    if (content !== undefined) {
+    if (content !== undefined && filePath) {
       setEditorContent(content);
       setIsModified(false);
       updateLineCount(content);
     }
-  }, [content]);
+  }, [filePath, content]);
   
   // Update line numbers when content changes
   const updateLineCount = (text) => {
@@ -168,7 +169,7 @@ const CodeEditor = ({
       fontSize: fontSize,
       fontFamily: "'Fira Code', Consolas, 'Courier New', monospace",
       lineNumbers: 'on',
-      scrollBeyondLastLine: false,
+      scrollBeyondLastLine: true,
       minimap: { enabled: false },
       lineHeight: 1.5,
       tabSize: tabSize,
@@ -177,7 +178,15 @@ const CodeEditor = ({
       scrollbar: {
         vertical: 'visible',
         horizontal: 'visible',
-      }
+        useShadows: true,
+        verticalScrollbarSize: 10,
+        horizontalScrollbarSize: 10,
+        alwaysConsumeMouseWheel: false
+      },
+      overviewRulerBorder: true,
+      overviewRulerLanes: 0,
+      hideCursorInOverviewRuler: true,
+      fixedOverflowWidgets: true
     };
   };
   
@@ -266,22 +275,38 @@ const CodeEditor = ({
     setShowSettings(!showSettings);
   };
   
-  // Download file
-  const handleDownload = () => {
-    const element = document.createElement('a');
-    const file = new Blob([editorContent], {type: 'text/plain'});
-    element.href = URL.createObjectURL(file);
-    element.download = fileName;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
-  
   // Copy file content
   const handleCopy = () => {
     navigator.clipboard.writeText(editorContent)
       .catch(err => console.error('Could not copy text: ', err));
   };
+  
+  // Handle open file
+  const handleOpenFile = async () => {
+    if (window.electron) {
+      try {
+        const result = await window.electron.openFile();
+        if (result.success) {
+          // Update the editor content and file path
+          setEditorContent(result.content);
+          if (onNavigate) {
+            onNavigate(result.path);
+          }
+        }
+      } catch (error) {
+        console.error("Error opening file:", error);
+      }
+    }
+  };
+
+  // Don't update content when it changes if we have a filePath (to maintain persistence)
+  useEffect(() => {
+    if (!filePath && content !== undefined) {
+      setEditorContent(content);
+      setIsModified(false);
+      updateLineCount(content);
+    }
+  }, [content]);
 
   return (
     <div className={`code-editor-container ${currentTheme === 'tomorrow_night' || currentTheme === 'dark' ? 'dark-theme' : 'light-theme'}`}>
@@ -343,6 +368,15 @@ const CodeEditor = ({
         <div className="code-editor-actions">
           <button 
             className="editor-action-btn"
+            onClick={handleOpenFile}
+            title="Open file"
+          >
+            <FolderOpen size={16} />
+            <span>Open</span>
+          </button>
+          
+          <button 
+            className="editor-action-btn"
             onClick={handleSave}
             disabled={!isModified || !onSave}
             title="Save file (Ctrl+S)"
@@ -358,15 +392,6 @@ const CodeEditor = ({
           >
             <Copy size={16} />
             <span>Copy</span>
-          </button>
-          
-          <button 
-            className="editor-action-btn"
-            onClick={handleDownload}
-            title="Download file"
-          >
-            <Download size={16} />
-            <span>Download</span>
           </button>
           
           <button 

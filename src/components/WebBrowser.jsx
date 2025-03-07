@@ -10,12 +10,22 @@ const DEFAULT_HOME_URL = window.electron
 const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
   // Use our custom home page if no initial URL is provided
   const homeUrl = initialUrl || DEFAULT_HOME_URL;
-  const [url, setUrl] = useState(homeUrl);
+  // Load persisted state from localStorage
+  const [url, setUrl] = useState(() => {
+    const savedUrl = localStorage.getItem('browser-url');
+    return savedUrl || homeUrl;
+  });
   const [isLoading, setIsLoading] = useState(false);
-  const [history, setHistory] = useState([homeUrl]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const [pageTitle, setPageTitle] = useState("");
-  const [favicon, setFavicon] = useState("");
+  const [history, setHistory] = useState(() => {
+    const savedHistory = localStorage.getItem('browser-history');
+    return savedHistory ? JSON.parse(savedHistory) : [homeUrl];
+  });
+  const [historyIndex, setHistoryIndex] = useState(() => {
+    const savedIndex = localStorage.getItem('browser-history-index');
+    return savedIndex ? parseInt(savedIndex, 0) : 0;
+  });
+  const [pageTitle, setPageTitle] = useState(() => localStorage.getItem('browser-page-title') || "");
+  const [favicon, setFavicon] = useState(() => localStorage.getItem('browser-favicon') || "");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
   const [showPopover, setShowPopover] = useState(false);
@@ -23,6 +33,116 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
   const webviewRef = useRef(null);
   const popoverButtonRef = useRef(null);
   
+  // Save state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('browser-url', url);
+    localStorage.setItem('browser-history', JSON.stringify(history));
+    localStorage.setItem('browser-history-index', historyIndex.toString());
+    localStorage.setItem('browser-page-title', pageTitle);
+    localStorage.setItem('browser-favicon', favicon);
+  }, [url, history, historyIndex, pageTitle, favicon]);
+
+  // Modify the initial setup effect to handle the src setting
+  useEffect(() => {
+    const setupWebview = () => {
+      if (webviewRef.current) {
+        const webview = webviewRef.current;
+        
+        // Only set src if it's a fresh webview (no src and no contentWindow)
+        if (!webview.src && (!webview.contentWindow || webview.contentWindow.location.href === 'about:blank')) {
+          webview.src = url;
+        }
+
+        // Set webview preferences to preserve state
+        if (window.electron) {
+          webview.setAttribute('allowpopups', '');
+          webview.setAttribute('nodeintegration', 'on');
+          webview.setAttribute('webpreferences', `
+            contextIsolation=false,
+            backgroundThrottling=false,
+            preserveWebviewTag=true,
+            partition=persist:main
+          `);
+        }
+
+        // Define visibility change handler
+        const handleVisibilityChange = () => {
+          if (document.hidden) {
+            // Keep the webview running when hidden
+            if (webview.getWebContents) {
+              const contents = webview.getWebContents();
+              contents.setBackgroundThrottling(false);
+            }
+          } else {
+            // Just ensure the webview is still active when shown
+            if (webview.getWebContents) {
+              const contents = webview.getWebContents();
+              contents.setBackgroundThrottling(false);
+            }
+          }
+        };
+
+        // Set up visibility change handler
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // Add event listeners for loading state
+        if (window.electron) {
+          // For Electron webview
+          webview.addEventListener('did-start-loading', () => {
+            setIsLoading(true);
+          });
+          
+          webview.addEventListener('did-stop-loading', () => {
+            setIsLoading(false);
+          });
+          
+          webview.addEventListener('did-finish-load', handleWebviewLoad);
+          
+          // Add event listener for URL changes
+          webview.addEventListener('did-navigate', (e) => {
+            setUrl(e.url);
+            // Update history if needed
+            if (history[historyIndex] !== e.url) {
+              const newHistory = [...history.slice(0, historyIndex + 1), e.url];
+              setHistory(newHistory);
+              setHistoryIndex(newHistory.length - 1);
+            }
+          });
+          
+          // For navigation within the same page (hash changes, etc.)
+          webview.addEventListener('did-navigate-in-page', (e) => {
+            setUrl(e.url);
+          });
+        } else {
+          // For iframe fallback
+          webview.onloadstart = () => setIsLoading(true);
+          webview.onloadend = () => setIsLoading(false);
+          webview.onload = handleWebviewLoad;
+        }
+
+        // Return cleanup function
+        return () => {
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+          
+          if (window.electron) {
+            webview.removeEventListener('did-start-loading', () => {});
+            webview.removeEventListener('did-stop-loading', () => {});
+            webview.removeEventListener('did-finish-load', handleWebviewLoad);
+            webview.removeEventListener('did-navigate', () => {});
+            webview.removeEventListener('did-navigate-in-page', () => {});
+          } else {
+            webview.onloadstart = null;
+            webview.onloadend = null;
+            webview.onload = null;
+          }
+        };
+      }
+    };
+    
+    const cleanup = setupWebview();
+    return () => cleanup && cleanup();
+  }, []); // Empty dependency array to run only once on mount
+
   // Context menu handlers
   const handleContextMenu = useCallback((e) => {
     // Only show context menu for the webview container, not including the controls
@@ -181,7 +301,7 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
     let processedUrl = newUrl;
     
     // Add https:// if URL doesn't have a protocol
-    if (!/^https?:\/\//i.test(processedUrl)) {
+    if (!/^https?:\/\//i.test(processedUrl) && !/^file:\/\//i.test(processedUrl)) {
       processedUrl = `https://${processedUrl}`;
     }
     
@@ -189,7 +309,10 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
     
     // If webview is available, use it to navigate
     if (webviewRef.current) {
-      webviewRef.current.src = processedUrl;
+      // Only set src if it's different to prevent unnecessary reloads
+      if (webviewRef.current.src !== processedUrl) {
+        webviewRef.current.src = processedUrl;
+      }
     }
     
     // Update history
@@ -405,89 +528,6 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
     }
   };
   
-  // Set up webview event listeners
-  useEffect(() => {
-    const setupWebview = () => {
-      if (webviewRef.current) {
-        // Try to set additional attributes if needed
-        webviewRef.current.setAttribute('allowpopups', '');
-        webviewRef.current.setAttribute('nodeintegration', 'on');
-        
-        // Add event listeners for loading state
-        if (window.electron) {
-          // For Electron webview
-          webviewRef.current.addEventListener('did-start-loading', () => {
-            setIsLoading(true);
-          });
-          
-          webviewRef.current.addEventListener('did-stop-loading', () => {
-            setIsLoading(false);
-          });
-          
-          webviewRef.current.addEventListener('did-finish-load', handleWebviewLoad);
-          
-          // Add event listener for URL changes
-          webviewRef.current.addEventListener('did-navigate', (e) => {
-            setUrl(e.url);
-            // Update history if needed
-            if (history[historyIndex] !== e.url) {
-              const newHistory = [...history.slice(0, historyIndex + 1), e.url];
-              setHistory(newHistory);
-              setHistoryIndex(newHistory.length - 1);
-            }
-          });
-          
-          // For navigation within the same page (hash changes, etc.)
-          webviewRef.current.addEventListener('did-navigate-in-page', (e) => {
-            setUrl(e.url);
-          });
-        } else {
-          // For iframe fallback
-          webviewRef.current.onloadstart = () => setIsLoading(true);
-          webviewRef.current.onloadend = () => setIsLoading(false);
-          
-          // For iframe, we need to use the load event to check URL changes
-          webviewRef.current.onload = () => {
-            handleWebviewLoad();
-            try {
-              // Try to get the current URL from the iframe
-              // Note: This might be restricted by same-origin policy
-              const currentUrl = webviewRef.current.contentWindow.location.href;
-              if (currentUrl && url !== currentUrl) {
-                setUrl(currentUrl);
-                // Update history if needed
-                if (history[historyIndex] !== currentUrl) {
-                  const newHistory = [...history.slice(0, historyIndex + 1), currentUrl];
-                  setHistory(newHistory);
-                  setHistoryIndex(newHistory.length - 1);
-                }
-              }
-            } catch (err) {
-              console.error("Error accessing iframe URL:", err);
-            }
-          };
-        }
-      }
-    };
-    
-    // Set a small delay to ensure the ref is available
-    const timer = setTimeout(setupWebview, 100);
-    
-    return () => {
-      clearTimeout(timer);
-      // Clean up event listeners
-      if (webviewRef.current) {
-        if (window.electron) {
-          webviewRef.current.removeEventListener('did-start-loading', () => {});
-          webviewRef.current.removeEventListener('did-stop-loading', () => {});
-          webviewRef.current.removeEventListener('did-finish-load', handleWebviewLoad);
-          webviewRef.current.removeEventListener('did-navigate', () => {});
-          webviewRef.current.removeEventListener('did-navigate-in-page', () => {});
-        }
-      }
-    };
-  }, [history, historyIndex]);
-
   const handleHomeClick = () => {
     setUrl('browser-home.html');
     if (webviewRef.current) {
@@ -620,7 +660,6 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
         {window.electron ? (
           <webview
             ref={webviewRef}
-            src={homeUrl}
             className="web-browser-webview"
             onLoad={handleWebviewLoad}
             allowpopups="true"
@@ -629,7 +668,6 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
         ) : (
           <iframe
             ref={webviewRef}
-            src={homeUrl}
             className="web-browser-iframe"
             onLoad={handleWebviewLoad}
             title="Web Browser"

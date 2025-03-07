@@ -121,6 +121,25 @@ contextBridge.exposeInMainWorld("electron", {
       ipcRenderer.send('write-file', { filePath, content });
     });
   },
+  openFile: () => {
+    return new Promise((resolve, reject) => {
+      // Set up a one-time listener for the response
+      const responseHandler = (_, response) => {
+        ipcRenderer.removeListener('file-opened', responseHandler);
+        if (response.success) {
+          resolve(response);
+        } else {
+          reject(new Error(response.error || 'Failed to open file'));
+        }
+      };
+      
+      // Listen for the response
+      ipcRenderer.once('file-opened', responseHandler);
+      
+      // Send the request
+      ipcRenderer.send('open-file');
+    });
+  },
   readFile: (filePath) => {
     return new Promise((resolve, reject) => {
       // Set up a one-time listener for the response
