@@ -10,6 +10,7 @@ import CodeEditor from './components/CodeEditor';
 import PromptEngine from './components/PromptEngine';
 import EditorPage from './components/EditorPage';
 import FileManager from './components/FileManager';
+import './styles/settings.css';
 
 // Keys for localStorage
 const STORAGE_KEYS = {
@@ -157,25 +158,80 @@ const App = () => {
     sessionStorage.setItem("hasLoadedInitialData", "true");
   }, [isElectron, selectedFolder]);
 
-  // Listen for folder selection from main process
+  // Set up event listeners for file and folder operations
   useEffect(() => {
-    if (!isElectron) {
-      console.warn("Not running in Electron environment");
-      return;
-    }
+    if (!isElectron) return;
 
-    const handleFolderSelected = (folderPath) => {
-      // Check if folderPath is valid string
+    // Set up event listeners
+    window.electron.receive('file-created', (result) => {
+      if (result.success) {
+        console.log("File created successfully:", result.file);
+        
+        // Add the new file to allFiles
+        setAllFiles(prevFiles => [...prevFiles, result.file]);
+        
+        // Add to recent files
+        const updatedRecentFiles = [result.file.path, ...recentFiles.filter(f => f !== result.file.path)].slice(0, 10);
+        setRecentFiles(updatedRecentFiles);
+        localStorage.setItem('pastemax-recent-files', JSON.stringify(updatedRecentFiles));
+        
+        // Refresh the file list to update the tree
+        window.electron.send("request-file-list", selectedFolder);
+      } else {
+        console.error("Error creating file:", result.error);
+        setProcessingStatus({
+          status: "error",
+          message: "Error creating file: " + result.error
+        });
+      }
+    });
+
+    window.electron.receive('folder-created', (result) => {
+      if (result.success) {
+        console.log("Folder created successfully:", result.path);
+        
+        // Add to recent folders
+        const updatedRecentFolders = [result.path, ...recentFolders.filter(f => f !== result.path)].slice(0, 10);
+        setRecentFolders(updatedRecentFolders);
+        localStorage.setItem('pastemax-recent-folders', JSON.stringify(updatedRecentFolders));
+        
+        // Update current directory to the newly created folder
+        setCurrentDirectory(result.path);
+        
+        // Expand the newly created folder in the tree
+        const newExpandedNodes = { ...expandedNodes };
+        newExpandedNodes[`node-${result.path}`] = true;
+        setExpandedNodes(newExpandedNodes);
+        localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
+        
+        // Clear any error status
+        setProcessingStatus({
+          status: "complete",
+          message: `Created folder: ${result.path.split('/').pop()}`
+        });
+        
+        // Refresh the file list to update the tree
+        window.electron.send("request-file-list", selectedFolder);
+      } else {
+        console.error("Error creating folder:", result.error);
+        setProcessingStatus({
+          status: "error",
+          message: "Error creating folder: " + result.error
+        });
+      }
+    });
+
+    // Set up file list and folder selection listeners
+    window.electron.receive("folder-selected", (folderPath) => {
       if (typeof folderPath === "string") {
         console.log("Folder selected:", folderPath);
         setSelectedFolder(folderPath);
-        // We'll select all files after they're loaded
         setSelectedFiles([]);
         setProcessingStatus({
           status: "processing",
           message: "Requesting file list..."
         });
-        window.electron.ipcRenderer.send("request-file-list", folderPath);
+        window.electron.send("request-file-list", folderPath);
       } else {
         console.error("Invalid folder path received:", folderPath);
         setProcessingStatus({
@@ -183,9 +239,9 @@ const App = () => {
           message: "Invalid folder path received"
         });
       }
-    };
+    });
 
-    const handleFileListData = (files) => {
+    window.electron.receive("file-list-data", (files) => {
       console.log("Received file list data:", files.length, "files");
       setAllFiles(files);
       setProcessingStatus({
@@ -205,54 +261,28 @@ const App = () => {
         .map((file) => file.path);
 
       setSelectedFiles(selectablePaths);
-    };
+    });
 
-    const handleProcessingStatus = (status) => {
+    window.electron.receive("file-processing-status", (status) => {
       console.log("Processing status:", status);
       setProcessingStatus(status);
-    };
+    });
 
-    const handleFileSaved = (result) => {
+    window.electron.receive("file-saved", (result) => {
       if (result.success) {
         console.log("File saved successfully:", result.path);
-        // Optionally show a success message
+        // Refresh the file list to get updated token counts and content
+        window.electron.send("request-file-list", selectedFolder);
       } else {
         console.error("Error saving file:", result.error);
-        // Show an error message
         setProcessingStatus({
           status: "error",
           message: "Error saving file: " + result.error
         });
       }
-    };
+    });
 
-    window.electron.ipcRenderer.on("folder-selected", handleFolderSelected);
-    window.electron.ipcRenderer.on("file-list-data", handleFileListData);
-    window.electron.ipcRenderer.on(
-      "file-processing-status",
-      handleProcessingStatus
-    );
-    window.electron.ipcRenderer.on("file-saved", handleFileSaved);
-
-    return () => {
-      window.electron.ipcRenderer.removeListener(
-        "folder-selected",
-        handleFolderSelected
-      );
-      window.electron.ipcRenderer.removeListener(
-        "file-list-data",
-        handleFileListData
-      );
-      window.electron.ipcRenderer.removeListener(
-        "file-processing-status",
-        handleProcessingStatus
-      );
-      window.electron.ipcRenderer.removeListener(
-        "file-saved",
-        handleFileSaved
-      );
-    };
-  }, [isElectron, sortOrder, searchTerm]);
+  }, [isElectron, selectedFolder, expandedNodes, sortOrder, searchTerm]);
 
   const openFolder = () => {
     if (isElectron) {
@@ -637,7 +667,7 @@ const App = () => {
 
   // Build file tree structure from flat list of files
   const buildFileTree = () => {
-    if (allFiles.length === 0) {
+    if (allFiles.length === 0 || !selectedFolder) {
       return [];
     }
 
@@ -647,46 +677,40 @@ const App = () => {
 
       // First pass: create directories and files
       allFiles.forEach((file) => {
-        if (!file.path) return;
+        if (!file.path || !file.path.startsWith(selectedFolder)) return;
 
-        const relativePath =
-          selectedFolder && file.path.startsWith(selectedFolder)
-            ? file.path
-                .substring(selectedFolder.length)
-                .replace(/^\/|^\\/, "")
-            : file.path;
+        // Get the path relative to the selected folder
+        const relativePath = file.path
+          .substring(selectedFolder.length)
+          .replace(/^[/\\]+/, ""); // Remove leading slashes
 
-        const parts = relativePath.split(/[/\\]/);
-        let currentPath = "";
+        if (!relativePath) return; // Skip the selected folder itself
+
+        const parts = relativePath.split(/[/\\]/).filter(Boolean);
+        let currentPath = selectedFolder;
         let current = fileMap;
 
-        // Build the path in the tree
-        for (let i = 0; i < parts.length; i++) {
-          const part = parts[i];
-          if (!part) continue;
-
-          currentPath = currentPath ? `${currentPath}/${part}` : part;
-          const fullPath = selectedFolder
-            ? `${selectedFolder}/${currentPath}`
-            : currentPath;
-
-          if (i === parts.length - 1) {
+        // Build the path in the tree, creating intermediate directories
+        parts.forEach((part, i) => {
+          currentPath = `${currentPath}/${part}`;
+          
+          if (i === parts.length - 1 && !file.isDirectory) {
             // This is a file
             current[part] = {
-              id: `node-${fullPath}`,
+              id: `node-${currentPath}`,
               name: part,
-              path: fullPath,
+              path: currentPath,
               type: "file",
               level: i,
               fileData: file,
             };
           } else {
-            // This is a directory
+            // This is a directory (either intermediate or final)
             if (!current[part]) {
               current[part] = {
-                id: `node-${fullPath}`,
+                id: `node-${currentPath}`,
                 name: part,
-                path: fullPath,
+                path: currentPath,
                 type: "directory",
                 level: i,
                 children: {},
@@ -694,24 +718,66 @@ const App = () => {
             }
             current = current[part].children;
           }
+        });
+      });
+
+      // Second pass: create any missing parent directories
+      const ensureParentDirectories = (path) => {
+        if (!path.startsWith(selectedFolder)) return;
+        
+        const relativePath = path
+          .substring(selectedFolder.length)
+          .replace(/^[/\\]+/, "");
+        
+        if (!relativePath) return;
+
+        const parts = relativePath.split(/[/\\]/).filter(Boolean);
+        let currentPath = selectedFolder;
+        let current = fileMap;
+
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part = parts[i];
+          currentPath = `${currentPath}/${part}`;
+          
+          if (!current[part]) {
+            current[part] = {
+              id: `node-${currentPath}`,
+              name: part,
+              path: currentPath,
+              type: "directory",
+              level: i,
+              children: {},
+            };
+          }
+          current = current[part].children;
+        }
+      };
+
+      // Ensure all parent directories exist
+      allFiles.forEach((file) => {
+        if (file.path) {
+          ensureParentDirectories(file.path);
         }
       });
 
       // Convert the nested object structure to the TreeNode array format
       const convertToTreeNodes = (node, level = 0) => {
-        return Object.keys(node).map((key) => {
-          const item = node[key];
-
+        return Object.entries(node).map(([key, item]) => {
           if (item.type === "file") {
-            return item;
+            return {
+              ...item,
+              level: 0  // Reset level to 0 since we're hiding parent folders
+            };
           } else {
             const children = convertToTreeNodes(item.children, level + 1);
-            const isExpanded = expandedNodes[item.id] !== undefined
-              ? expandedNodes[item.id]
+            const nodeId = `node-${item.path}`;
+            const isExpanded = expandedNodes[nodeId] !== undefined
+              ? expandedNodes[nodeId]
               : true; // Default to expanded if not in state
 
             return {
               ...item,
+              level: level,  // Keep relative levels for nested folders
               children: children.sort((a, b) => {
                 // Sort directories first
                 if (a.type === "directory" && b.type === "file") return -1;
@@ -740,14 +806,6 @@ const App = () => {
       return treeRoots.sort((a, b) => {
         if (a.type === "directory" && b.type === "file") return -1;
         if (a.type === "file" && b.type === "directory") return 1;
-
-        // Sort files by token count (largest first)
-        if (a.type === "file" && b.type === "file") {
-          const aTokens = a.fileData?.tokenCount || 0;
-          const bTokens = b.fileData?.tokenCount || 0;
-          return bTokens - aTokens;
-        }
-
         return a.name.localeCompare(b.name);
       });
     } catch (err) {
@@ -1060,34 +1118,17 @@ const App = () => {
     const fullPath = directory ? `${directory}/${fileName}` : fileName;
     
     if (isElectron) {
-      window.electron.ipcRenderer.send("create-file", {
+      window.electron.send("create-file", {
         folderPath: directory || selectedFolder,
         fileName: fileName,
         content: content
       });
       
-      // Add a listener for the response if not already listening
-      if (!window.electron.ipcRenderer.listenerCount('file-created')) {
-        window.electron.ipcRenderer.once('file-created', (event, result) => {
-          if (result.success) {
-            console.log("File created successfully:", result.file);
-            
-            // Add the new file to allFiles
-            setAllFiles(prevFiles => [...prevFiles, result.file]);
-            
-            // If content was provided, open the file for editing
-            if (content) {
-              setCurrentFile(fullPath);
-              setFileContent(content);
-              setIsEditing(true);
-            }
-            
-            // Refresh the file list
-            window.electron.ipcRenderer.send("request-file-list", selectedFolder);
-          } else {
-            console.error("Error creating file:", result.error);
-          }
-        });
+      // If content was provided, prepare to open the file for editing
+      if (content) {
+        setCurrentFile(fullPath);
+        setFileContent(content);
+        setIsEditing(true);
       }
     }
   };
@@ -1105,10 +1146,33 @@ const App = () => {
   // Handle folder creation
   const handleCreateFolder = (directory, folderName) => {
     if (isElectron) {
-      window.electron.ipcRenderer.send("create-folder", {
-        folderPath: directory || selectedFolder,
+      const targetDirectory = directory || selectedFolder;
+      const fullPath = `${targetDirectory}/${folderName}`;
+      
+      // Show processing status
+      setProcessingStatus({
+        status: "processing",
+        message: `Creating folder: ${folderName}`
+      });
+      
+      window.electron.send("create-folder", {
+        folderPath: targetDirectory,
         folderName: folderName
       });
+      
+      // Pre-expand the node that will be created
+      const newExpandedNodes = { ...expandedNodes };
+      newExpandedNodes[`node-${fullPath}`] = true;
+      setExpandedNodes(newExpandedNodes);
+      localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
+      
+      // Set current directory to the new folder's parent to ensure it's visible
+      setCurrentDirectory(targetDirectory);
+      
+      // Force a refresh of the file list after a short delay to ensure the folder is created
+      setTimeout(() => {
+        window.electron.send("request-file-list", selectedFolder);
+      }, 100);
     }
   };
 
@@ -1274,48 +1338,72 @@ const App = () => {
                   )}
 
                   {activePage === "settings" && (
-                    <div className="settings-container">
-                      <h2>Settings</h2>
+                    <div className="settings-page">
+                      <div className="settings-header">
+                        <h2>Settings</h2>
+                      </div>
                       
-                      <div className="settings-section">
-                        <h3>Theme</h3>
-                        <div className="settings-option">
-                          <label>Application Theme</label>
-                          <div className="theme-selector">
-                            <div 
-                              className={`theme-option ${themeMode === 'light' ? 'active' : ''}`}
-                              onClick={() => toggleThemeMode()}
-                            >
-                              <div className="theme-preview light"></div>
-                              <span>Light</span>
-                            </div>
-                            <div 
-                              className={`theme-option ${themeMode === 'dark' ? 'active' : ''}`}
-                              onClick={() => toggleThemeMode()}
-                            >
-                              <div className="theme-preview dark"></div>
-                              <span>Dark</span>
+                      <div className="settings-content">
+                        <div className="settings-section">
+                          <div className="settings-section-header">
+                            <h3>Appearance</h3>
+                          </div>
+                          <div className="settings-section-content">
+                            <div className="settings-option">
+                              <div className="settings-option-label">
+                                <label>Theme</label>
+                                <span className="settings-option-description">
+                                  Choose between light and dark theme for the application
+                                </span>
+                              </div>
+                              <div className="settings-option-control">
+                                <div className="theme-selector">
+                                  <button 
+                                    className={`theme-option ${themeMode === 'light' ? 'active' : ''}`}
+                                    onClick={() => toggleThemeMode()}
+                                  >
+                                    <div className="theme-preview light"></div>
+                                    <span>Light</span>
+                                  </button>
+                                  <button 
+                                    className={`theme-option ${themeMode === 'dark' ? 'active' : ''}`}
+                                    onClick={() => toggleThemeMode()}
+                                  >
+                                    <div className="theme-preview dark"></div>
+                                    <span>Dark</span>
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="settings-section">
-                        <h3>Token Limits</h3>
-                        <div className="settings-option">
-                          <label htmlFor="token-warning-limit">Token Warning Limit</label>
-                          <div className="token-limit-input">
-                            <input 
-                              id="token-warning-limit"
-                              type="number" 
-                              min="100" 
-                              max="100000" 
-                              value={tokenWarningLimit}
-                              onChange={(e) => setTokenWarningThreshold(e.target.value)}
-                            />
-                            <p className="settings-description">
-                              You'll receive a warning when your selected files approach or exceed this token limit.
-                            </p>
+                        
+                        <div className="settings-section">
+                          <div className="settings-section-header">
+                            <h3>Token Management</h3>
+                          </div>
+                          <div className="settings-section-content">
+                            <div className="settings-option">
+                              <div className="settings-option-label">
+                                <label htmlFor="token-warning-limit">Warning Limit</label>
+                                <span className="settings-option-description">
+                                  You'll receive a warning when your selected files approach or exceed this token limit
+                                </span>
+                              </div>
+                              <div className="settings-option-control">
+                                <div className="token-limit-control">
+                                  <input 
+                                    id="token-warning-limit"
+                                    type="number" 
+                                    min="100" 
+                                    max="100000" 
+                                    value={tokenWarningLimit}
+                                    onChange={(e) => setTokenWarningThreshold(e.target.value)}
+                                  />
+                                  <span className="token-limit-unit">tokens</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>

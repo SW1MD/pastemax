@@ -32,20 +32,26 @@ export interface SidebarProps {
 export interface FileListProps {
   files: FileData[];
   selectedFiles: string[];
-  toggleFileSelection: (filePath: string) => void;
+  toggleFileSelection: (path: string) => void;
+  viewedFile?: FileData | null;
+  onViewFile?: (file: FileData) => void;
+  onCloseView?: () => void;
+  problemHighlightingActive?: boolean;
 }
 
 export interface FileCardProps {
   file: FileData;
   isSelected: boolean;
-  toggleSelection: (filePath: string) => void;
+  toggleSelection: (path: string) => void;
+  onViewFile?: (file: FileData) => void;
+  problemHighlightingActive?: boolean;
 }
 
 export interface TreeItemProps {
   node: TreeNode;
   selectedFiles: string[];
-  toggleFileSelection: (filePath: string) => void;
-  toggleFolderSelection: (folderPath: string, isSelected: boolean) => void;
+  toggleFileSelection: (path: string) => void;
+  toggleFolderSelection: (path: string, isSelected: boolean) => void;
   toggleExpanded: (nodeId: string) => void;
 }
 
