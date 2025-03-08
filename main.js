@@ -187,60 +187,89 @@ function cleanupCacheDirectory(directoryPath) {
 
 // Add a more robust function to initialize cache
 function initializeCache() {
-  // Removed console.log
+  logWithDetails("Initializing cache directories");
   
   try {
+    // Configure Electron to use different cache directories
+    // This can help avoid permission issues with existing cache
+    const userDataPath = app.getPath('userData');
+    const customCachePath = join(userDataPath, 'CustomCache');
+    
+    try {
+      app.commandLine.appendSwitch('disk-cache-dir', customCachePath);
+      app.commandLine.appendSwitch('disable-http-cache');
+      logWithDetails(`Set custom cache directory to: ${customCachePath}`);
+      
+      // Create custom cache directory if it doesn't exist
+      if (!existsSync(customCachePath)) {
+        mkdirSync(customCachePath, { recursive: true });
+        logWithDetails(`Created custom cache directory: ${customCachePath}`);
+      }
+    } catch (switchErr) {
+      logWithDetails("Error setting cache switches", switchErr);
+    }
+    
     // Define cache directories to clean/create
     const cacheDirs = [
-      join(app.getPath('userData'), 'Cache'),
-      join(app.getPath('userData'), 'GPUCache'),
-      join(app.getPath('userData'), 'Code Cache'),
-      join(app.getPath('userData'), 'DawnGraphiteCache'),
-      join(app.getPath('userData'), 'DawnWebGPUCache'),
-      join(app.getPath('userData'), 'blob_storage')
+      join(userDataPath, 'Cache'),
+      join(userDataPath, 'GPUCache'),
+      join(userDataPath, 'Code Cache'),
+      join(userDataPath, 'DawnGraphiteCache'),
+      join(userDataPath, 'DawnWebGPUCache'),
+      join(userDataPath, 'blob_storage')
     ];
     
-    // Process each cache directory
+    // Process each cache directory with improved error handling
     cacheDirs.forEach(dir => {
       try {
-        const fullPath = join(app.getPath('userData'), dir);
-        // Removed console.log
-        
-        if (existsSync(fullPath)) {
-          // Removed console.log
+        if (existsSync(dir)) {
+          logWithDetails(`Cache directory exists: ${dir}`);
+          
+          // Instead of deleting files that might be in use, we'll just ensure
+          // the directory is writable and let Electron manage the files
           try {
-            // If directory exists, try to delete it
+            accessSync(dir, constants.W_OK);
+            logWithDetails(`Cache directory is writable: ${dir}`);
+          } catch (accessErr) {
+            logWithDetails(`Cannot write to cache directory: ${dir}`, accessErr);
+            
+            // Try to create a new directory with a different name
+            const altDir = `${dir}_new`;
             try {
-              rmdirSync(fullPath, { recursive: true });
-            } catch (err) {
-              // Removed console.error
+              if (!existsSync(altDir)) {
+                mkdirSync(altDir, { recursive: true });
+                logWithDetails(`Created alternative cache directory: ${altDir}`);
+              }
+            } catch (altErr) {
+              logWithDetails(`Failed to create alternative cache directory`, altErr);
             }
-          } catch (cleanErr) {
-            // Removed console.error
+          }
+        } else {
+          // Create if doesn't exist
+          logWithDetails(`Creating cache directory: ${dir}`);
+          try {
+            mkdirSync(dir, { recursive: true });
+          } catch (createErr) {
+            logWithDetails(`Error creating cache directory: ${dir}`, createErr);
           }
         }
-        
-        // Create fresh directory
-        // Removed console.log
-        try {
-          mkdirSync(fullPath, { recursive: true });
-        } catch (createErr) {
-          // Removed console.error
-        }
       } catch (err) {
-        // Removed console.error
+        logWithDetails(`Error processing cache directory: ${dir}`, err);
       }
     });
     
-    // Removed console.log
+    logWithDetails("Cache initialization completed");
   } catch (err) {
-    // ... existing code ...
+    logWithDetails("Cache initialization failed", err);
   }
 }
 
 function createWindow() {
   // Log before window state initialization
   logWithDetails("Starting window creation process");
+  
+  // Initialize cache before creating the window
+  initializeCache();
   
   // Load the previous state with fallback to defaults
   const mainWindowState = windowStateKeeper({
@@ -250,27 +279,57 @@ function createWindow() {
   
   logWithDetails("Window state loaded");
 
+  // Add GPU-related flags to improve stability
+  try {
+    // Hardware acceleration can cause issues, disable if having GPU problems
+    // app.commandLine.appendSwitch('disable-gpu');
+    app.commandLine.appendSwitch('disable-gpu-compositing');
+    app.commandLine.appendSwitch('disable-gpu-memory-buffer-video-frames');
+    app.commandLine.appendSwitch('disable-accelerated-video-decode');
+    app.commandLine.appendSwitch('disable-accelerated-video-encode');
+    logWithDetails("Set GPU optimization flags");
+  } catch (err) {
+    logWithDetails("Error setting GPU flags", err);
+  }
+
   // Add cache directory check
   const cachePath = app.getPath('cache');
-  logWithDetails(`Checking cache directory: ${cachePath}`);
+  logWithDetails(`Main cache directory: ${cachePath}`);
   
   try {
     if (!existsSync(cachePath)) {
-      logWithDetails(`Cache directory doesn't exist, creating: ${cachePath}`);
+      logWithDetails(`Main cache directory doesn't exist, creating: ${cachePath}`);
       mkdirSync(cachePath, { recursive: true });
     } else {
-      logWithDetails(`Cache directory exists: ${cachePath}`);
-      // Check for locked files in the cache directory
-      checkLockedFiles(cachePath);
-      
-      // Also check GPU cache directory
-      const gpuCachePath = join(app.getPath('userData'), 'GPUCache');
-      if (existsSync(gpuCachePath)) {
-        checkLockedFiles(gpuCachePath);
+      logWithDetails(`Main cache directory exists: ${cachePath}`);
+      // Instead of just checking locked files, attempt gentle cleanup
+      try {
+        const files = readdirSync(cachePath);
+        logWithDetails(`Found ${files.length} files in main cache directory`);
+        
+        // Clean up files that might be causing problems
+        for (const file of files) {
+          try {
+            const filePath = join(cachePath, file);
+            if (statSync(filePath).isFile()) {
+              try {
+                unlinkSync(filePath);
+                logWithDetails(`Cleaned up cache file: ${filePath}`);
+              } catch (unlinkErr) {
+                // If we can't delete, just log and continue
+                logWithDetails(`Could not clean cache file: ${filePath}`, unlinkErr);
+              }
+            }
+          } catch (fileErr) {
+            logWithDetails(`Error processing cache file: ${file}`, fileErr);
+          }
+        }
+      } catch (readErr) {
+        logWithDetails(`Cannot read main cache directory`, readErr);
       }
     }
   } catch (err) {
-    logWithDetails(`Error checking/creating cache directory`, err);
+    logWithDetails(`Error with main cache directory`, err);
   }
 
   mainWindow = new BrowserWindow({
@@ -287,11 +346,22 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       backgroundThrottling: false, // Prevent throttling when hidden
+      // Add these lines to control GPU-related features
+      disableBlinkFeatures: "AcceleratedVideo",
+      offscreen: false,
       devTools: {
         isDevToolsExtension: false,
         htmlFullscreen: false,
       },
     },
+  });
+
+  // Configure session for improved caching behavior
+  const ses = mainWindow.webContents.session;
+  ses.clearCache().then(() => {
+    logWithDetails("Session cache cleared");
+  }).catch(err => {
+    logWithDetails("Error clearing session cache", err);
   });
 
   // Let us register listeners on the window, so we can update the state
@@ -696,16 +766,16 @@ function readFilesRecursively(dir, rootDir, ignoreFilter) {
   return results;
 }
 
-// Handle file list request
-ipcMain.on("request-file-list", (event, folderPath) => {
+// Function to process folder and send results to the specified webContents
+function processFolder(folderPath, sender) {
   if (!folderPath) {
-    event.sender.send("file-list-data", []);
+    sender.send("file-list-data", []);
     return;
   }
   
   try {
     // Send initial progress update
-    event.sender.send("file-processing-status", {
+    sender.send("file-processing-status", {
       status: "processing",
       message: "Scanning directory structure...",
     });
@@ -715,7 +785,7 @@ ipcMain.on("request-file-list", (event, folderPath) => {
       const files = readFilesRecursively(folderPath, folderPath);
 
       // Update with processing complete status
-      event.sender.send("file-processing-status", {
+      sender.send("file-processing-status", {
         status: "complete",
         message: `Found ${files.length} files`,
       });
@@ -742,21 +812,45 @@ ipcMain.on("request-file-list", (event, folderPath) => {
       });
 
       try {
-        event.sender.send("file-list-data", serializableFiles);
+        sender.send("file-list-data", serializableFiles);
       } catch (sendErr) {
-        event.sender.send("file-list-data", []);
+        sender.send("file-list-data", []);
       }
     };
 
     // Use setTimeout to allow UI to update before processing starts
     setTimeout(processFiles, 100);
   } catch (err) {
-    event.sender.send("file-processing-status", {
+    sender.send("file-processing-status", {
       status: "error",
       message: "Error processing directory",
     });
-    event.sender.send("file-list-data", []);
+    sender.send("file-list-data", []);
   }
+}
+
+// Handle file list request
+ipcMain.on("request-file-list", (event, folderPath) => {
+  processFolder(folderPath, event.sender);
+});
+
+// Handle file selection synchronization
+ipcMain.on("update-selected-files", (event, selectedFiles) => {
+  // Relay to all windows except sender
+  BrowserWindow.getAllWindows().forEach(window => {
+    if (window.webContents.id !== event.sender.id) {
+      window.webContents.send("update-selected-files", selectedFiles);
+    }
+  });
+});
+
+ipcMain.on("selected-files-updated", (event, selectedFiles) => {
+  // Relay to all windows except sender
+  BrowserWindow.getAllWindows().forEach(window => {
+    if (window.webContents.id !== event.sender.id) {
+      window.webContents.send("selected-files-updated", selectedFiles);
+    }
+  });
 });
 
 // Handle file writing

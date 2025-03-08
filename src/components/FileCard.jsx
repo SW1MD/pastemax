@@ -13,6 +13,11 @@ const FileCard = ({
   const { name, path: filePath, tokenCount, content } = file;
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
 
+  // Log selection state for debugging
+  React.useEffect(() => {
+    console.log(`FileCard ${filePath}: isSelected=${isSelected}`);
+  }, [filePath, isSelected]);
+
   // Format token count for display
   const formattedTokens = tokenCount.toLocaleString();
 
@@ -76,6 +81,9 @@ const FileCard = ({
             <FileText size={16} />
           </div>
           <div className="file-card-name monospace">{name}</div>
+          <div className="file-card-selection-indicator">
+            {isSelected ? "✓" : ""}
+          </div>
         </div>
         <div className="file-card-info">
           <div className="file-card-tokens">~{formattedTokens} tokens</div>

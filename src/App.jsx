@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { File, Folder, FolderOpen } from 'lucide-react';
 import Sidebar from "./components/Sidebar";
-import FileList from "./components/FileList";
 import CopyButton from "./components/CopyButton";
 import WebBrowser from "./components/WebBrowser";
 import PromptEngine from './components/PromptEngine';
@@ -9,6 +8,7 @@ import EditorPage from './components/EditorPage';
 import FileManager from './components/FileManager';
 import ProjectConfig from './components/ProjectConfig';
 import './styles/settings.css';
+import './styles/checkbox-override.css';
 
 // Keys for localStorage
 const STORAGE_KEYS = {
@@ -20,7 +20,6 @@ const STORAGE_KEYS = {
   BROWSER_VISIBLE: "pastemax-browser-visible",
   BROWSER_URL: "pastemax-browser-url",
   PROBLEM_HIGHLIGHT: "pastemax-problem-highlight",
-  VIEW_MODE: "pastemax-view-mode",
   THEME_MODE: "pastemax-theme-mode",
   TOKEN_WARNING_LIMIT: "pastemax-token-warning-limit",
 };
@@ -32,7 +31,6 @@ const App = () => {
   const savedSortOrder = localStorage.getItem(STORAGE_KEYS.SORT_ORDER);
   const savedSearchTerm = localStorage.getItem(STORAGE_KEYS.SEARCH_TERM);
   const savedProblemHighlight = localStorage.getItem(STORAGE_KEYS.PROBLEM_HIGHLIGHT);
-  const savedViewMode = localStorage.getItem(STORAGE_KEYS.VIEW_MODE);
   const savedThemeMode = localStorage.getItem(STORAGE_KEYS.THEME_MODE);
   const savedTokenWarningLimit = localStorage.getItem(STORAGE_KEYS.TOKEN_WARNING_LIMIT);
 
@@ -51,8 +49,7 @@ const App = () => {
     message: ""
   });
   const [viewedFile, setViewedFile] = useState(null);
-  const [viewMode, setViewMode] = useState(savedViewMode || "selected-files");
-  const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
+  const [viewMode] = useState("file-browser");
 
   // State for sort dropdown
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
@@ -81,12 +78,22 @@ const App = () => {
   );
   const [showTokenWarning, setShowTokenWarning] = useState(false);
 
+  // New counter state that starts at 0
+  const [fileCounter, setFileCounter] = useState(0);
+  // New token counter state that starts at 0
+  const [tokenCounter, setTokenCounter] = useState(0);
+
   // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
 
   // Apply theme on initial load
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", themeMode);
+  }, []);
+
+  // Reset selection and counter on initial load
+  useEffect(() => {
+    resetCounters();
   }, []);
 
   // Update theme when it changes
@@ -182,6 +189,27 @@ const App = () => {
       }
     });
 
+    // Add listener for folder selection to reset counter
+    window.electron.receive("folder-selected", (folderPath) => {
+      if (typeof folderPath === "string") {
+        // Reset selection and counter when a new folder is selected
+        resetCounters();
+        
+        // Set the selected folder
+        setSelectedFolder(folderPath);
+        setProcessingStatus({
+          status: "processing",
+          message: "Requesting file list..."
+        });
+        window.electron.send("request-file-list", folderPath);
+      } else {
+        setProcessingStatus({
+          status: "error",
+          message: "Invalid folder path received"
+        });
+      }
+    });
+
     window.electron.receive('folder-created', (result) => {
       if (result.success) {
         // Removed console.log
@@ -217,28 +245,10 @@ const App = () => {
       }
     });
 
-    // Set up file list and folder selection listeners
-    window.electron.receive("folder-selected", (folderPath) => {
-      if (typeof folderPath === "string") {
-        // Removed console.log
-        setSelectedFolder(folderPath);
-        setSelectedFiles([]);
-        setProcessingStatus({
-          status: "processing",
-          message: "Requesting file list..."
-        });
-        window.electron.send("request-file-list", folderPath);
-      } else {
-        // Removed console.error
-        setProcessingStatus({
-          status: "error",
-          message: "Invalid folder path received"
-        });
-      }
-    });
-
     window.electron.receive("file-list-data", (files) => {
-      // Removed console.log
+      // Debug log to check file structure
+      console.log("Received file list data:", files.slice(0, 3));
+      
       setAllFiles(files);
       setProcessingStatus({
         status: "complete",
@@ -282,28 +292,47 @@ const App = () => {
 
   }, [isElectron, selectedFolder, expandedNodes, sortOrder, searchTerm]);
 
+  // Function to reset all counters
+  const resetCounters = () => {
+    console.log("Resetting all counters");
+    setSelectedFiles([]);
+    console.log("Setting fileCounter to 0");
+    setFileCounter(0);
+    console.log("Setting tokenCounter to 0");
+    setTokenCounter(0);
+  };
+
+  // Handle folder opening - auto-select all files
   const openFolder = () => {
-    // Removed console.log
-    
     if (isElectron) {
       window.electron.send("open-folder");
-    } else {
-      // Removed console.warn
-      setProcessingStatus({
-        status: "error",
-        message: "Folder selection is only available in the desktop app"
-      });
+      
+      // Reset selection and counter when opening a new folder
+      resetCounters();
     }
   };
 
-  // Apply filters and sorting to files
+  // Apply filters and sorting to files - simplify to just focus on selected files
   const applyFiltersAndSort = (files, sort, filter) => {
-    let filtered = files;
+    // Make sure we're working with a valid array
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      console.log("No files to filter/sort");
+      setDisplayedFiles([]);
+      return;
+    }
 
-    // Apply filter
+    // First filter to include only selected files that aren't binary or skipped
+    let filtered = files.filter(
+      (file) => 
+        selectedFiles.includes(file.path) && 
+        !file.isBinary && 
+        !file.isSkipped
+    );
+
+    // Apply text search filter
     if (filter) {
       const lowerFilter = filter.toLowerCase();
-      filtered = files.filter(
+      filtered = filtered.filter(
         (file) =>
           file.name.toLowerCase().includes(lowerFilter) ||
           file.path.toLowerCase().includes(lowerFilter)
@@ -326,47 +355,183 @@ const App = () => {
       return sortDir === "asc" ? comparison : -comparison;
     });
 
+    console.log(`Displaying ${sorted.length} files out of ${getValidSelectedCount()} selected valid files`);
+    
+    // Update displayed files
     setDisplayedFiles(sorted);
   };
 
-  // Toggle file selection
-  const toggleFileSelection = (filePath) => {
-    setSelectedFiles((prev) => {
-      if (prev.includes(filePath)) {
-        return prev.filter((path) => path !== filePath);
-      } else {
-        return [...prev, filePath];
+  // Get token count for a specific file
+  const getFileTokenCount = (filePath) => {
+    // Try to find the file directly
+    let file = allFiles.find(f => f.path === filePath);
+    
+    // If not found, try to normalize the path
+    if (!file) {
+      // Try to find the file by name (last part of the path)
+      const fileName = filePath.split(/[/\\]/).pop();
+      file = allFiles.find(f => f.path.endsWith(fileName));
+    }
+    
+    if (file && !file.isBinary && !file.isSkipped) {
+      console.log(`File ${filePath} has ${file.tokenCount} tokens`);
+      return file.tokenCount || 0;
+    }
+    
+    // If we still can't find the file, check if it's in the file tree
+    const fileTree = buildFileTree();
+    const findFileInTree = (nodes) => {
+      for (const node of nodes) {
+        if (node.path === filePath && node.fileData) {
+          console.log(`Found file in tree: ${filePath} with ${node.fileData.tokenCount} tokens`);
+          return node.fileData.tokenCount || 0;
+        }
+        if (node.children && Object.keys(node.children).length > 0) {
+          const result = findFileInTree(Object.values(node.children));
+          if (result > 0) return result;
+        }
       }
+      return 0;
+    };
+    
+    const treeTokens = findFileInTree(fileTree);
+    if (treeTokens > 0) {
+      return treeTokens;
+    }
+    
+    console.log(`File ${filePath} has 0 tokens (not found or invalid)`);
+    return 0;
+  };
+
+  // Toggle file selection - fixed to ensure consistent selection state
+  const toggleFileSelection = (filePath, nodeData = null) => {
+    if (!filePath) return;
+    
+    // Get the token count for this file
+    let fileTokens = 0;
+    
+    // If nodeData is provided, use its tokenCount directly
+    if (nodeData && nodeData.fileData && nodeData.fileData.tokenCount) {
+      fileTokens = nodeData.fileData.tokenCount;
+      console.log(`Using direct token count from node: ${fileTokens}`);
+    } else {
+      // Otherwise, try to find the token count
+      fileTokens = getFileTokenCount(filePath);
+    }
+    
+    console.log(`Toggling selection for file: ${filePath}, tokens: ${fileTokens}`);
+    
+    setSelectedFiles(prev => {
+      // Check if the file is already selected
+      const isCurrentlySelected = prev.includes(filePath);
+      console.log(`File ${filePath} is currently ${isCurrentlySelected ? 'selected' : 'not selected'}`);
+      
+      let newSelectedFiles;
+      if (isCurrentlySelected) {
+        // Remove the file from selection
+        newSelectedFiles = prev.filter(path => path !== filePath);
+        // Decrement counter when removing a file
+        setFileCounter(current => {
+          const newValue = Math.max(0, current - 1);
+          console.log(`File counter: ${current} -> ${newValue}`);
+          return newValue;
+        });
+        // Decrement token counter
+        setTokenCounter(current => {
+          const newValue = Math.max(0, current - fileTokens);
+          console.log(`Token counter: ${current} -> ${newValue}`);
+          return newValue;
+        });
+      } else {
+        // Add the file to selection
+        newSelectedFiles = [...prev, filePath];
+        // Increment counter when adding a file
+        setFileCounter(current => {
+          const newValue = current + 1;
+          console.log(`File counter: ${current} -> ${newValue}`);
+          return newValue;
+        });
+        // Increment token counter
+        setTokenCounter(current => {
+          const newValue = current + fileTokens;
+          console.log(`Token counter: ${current} -> ${newValue}`);
+          return newValue;
+        });
+      }
+      
+      return newSelectedFiles;
     });
   };
 
-  // Toggle folder selection (select/deselect all files in folder)
+  // Toggle folder selection (select/deselect all files in folder) - fixed for better folder handling
   const toggleFolderSelection = (folderPath, isSelected) => {
+    console.log(`Toggle folder selection: ${folderPath}, isSelected: ${isSelected}`);
+    
+    // Get all files in this folder and subfolders that are valid (not binary/skipped)
     const filesInFolder = allFiles.filter(
       (file) =>
-        file.path.startsWith(folderPath) && !file.isBinary && !file.isSkipped
+        (file.path.startsWith(folderPath + "/") || file.path === folderPath) && 
+        !file.isBinary && 
+        !file.isSkipped
     );
+    
+    console.log(`Found ${filesInFolder.length} valid files in folder ${folderPath}`);
 
-    if (isSelected) {
-      // Add all files from this folder that aren't already selected
-      const filePaths = filesInFolder.map((file) => file.path);
-      setSelectedFiles((prev) => {
-        const newSelection = [...prev];
-        filePaths.forEach((path) => {
+    // Get all file paths in this folder
+    const filePaths = filesInFolder.map(file => file.path);
+    
+    setSelectedFiles(prev => {
+      let newSelection;
+      
+      if (isSelected) {
+        // Add all files to selection
+        newSelection = [...prev];
+        let addedCount = 0;
+        let addedTokens = 0;
+        
+        filePaths.forEach(path => {
           if (!newSelection.includes(path)) {
             newSelection.push(path);
+            addedCount++;
+            
+            // Add tokens for this file
+            const file = allFiles.find(f => f.path === path);
+            if (file) {
+              addedTokens += file.tokenCount || 0;
+            }
           }
         });
-        return newSelection;
-      });
-    } else {
-      // Remove all files from this folder
-      setSelectedFiles((prev) =>
-        prev.filter(
-          (path) => !filesInFolder.some((file) => file.path === path)
-        )
-      );
-    }
+        
+        console.log(`Added ${addedCount} files to selection with ${addedTokens} tokens`);
+        
+        // Update counters
+        setFileCounter(current => current + addedCount);
+        setTokenCounter(current => current + addedTokens);
+      } else {
+        // Remove all files in this folder from selection
+        const removedPaths = prev.filter(path => filePaths.includes(path));
+        newSelection = prev.filter(path => !filePaths.includes(path));
+        
+        let removedCount = removedPaths.length;
+        let removedTokens = 0;
+        
+        // Calculate removed tokens
+        removedPaths.forEach(path => {
+          const file = allFiles.find(f => f.path === path);
+          if (file) {
+            removedTokens += file.tokenCount || 0;
+          }
+        });
+        
+        console.log(`Removed ${removedCount} files from selection with ${removedTokens} tokens`);
+        
+        // Update counters
+        setFileCounter(current => Math.max(0, current - removedCount));
+        setTokenCounter(current => Math.max(0, current - removedTokens));
+      }
+      
+      return newSelection;
+    });
   };
 
   // Handle sort change
@@ -377,10 +542,32 @@ const App = () => {
 
   // Calculate total tokens from selected files
   const calculateTotalTokens = () => {
+    // Create a Set to ensure we only count each file once
+    const countedPaths = new Set();
+    
     return selectedFiles.reduce((total, path) => {
+      // Skip if we've already counted this file
+      if (countedPaths.has(path)) {
+        return total;
+      }
+      
+      // Find the file data
       const file = allFiles.find((f) => f.path === path);
-      return total + (file ? file.tokenCount : 0);
+      
+      // Only count if file exists and isn't binary/skipped
+      if (file && !file.isBinary && !file.isSkipped) {
+        countedPaths.add(path);
+        return total + file.tokenCount;
+      }
+      
+      return total;
     }, 0);
+  };
+
+  // Calculate tokens for selected files in the counter
+  const calculateCounterTokens = () => {
+    // Simply return the tokenCounter state
+    return tokenCounter;
   };
 
   // Concatenate selected files content for copying
@@ -607,20 +794,13 @@ const App = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  // Toggle view mode between selected files and file browser
-  const toggleViewMode = (mode) => {
-    setViewMode(mode);
-    localStorage.setItem(STORAGE_KEYS.VIEW_MODE, mode);
-    setViewDropdownOpen(false);
-  };
-
-  // Toggle view dropdown
-  const toggleViewDropdown = () => {
-    setViewDropdownOpen(!viewDropdownOpen);
-    // Close sort dropdown if open
-    if (sortDropdownOpen) {
-      setSortDropdownOpen(false);
-    }
+  // Helper function to generate breadcrumbs from the current directory
+  const getBreadcrumbs = () => {
+    return (currentDirectory || selectedFolder)?.split('/').map((part, index, array) => ({
+      name: part || 'Root',
+      path: array.slice(0, index + 1).join('/'),
+      isLast: index === array.length - 1
+    })) || [];
   };
 
   // Build file tree structure from flat list of files
@@ -778,15 +958,27 @@ const App = () => {
         <div 
           className={`file-browser-item ${isDirectory ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}`}
           style={{ paddingLeft: `${node.level * 16 + 4}px` }}
-          onClick={() => {
+          onClick={(e) => {
+            // Stop propagation to prevent parent handlers from firing
+            e.stopPropagation();
+            
             if (isDirectory) {
-              toggleFolderSelection(node.path, !isSelected);
+              toggleExpanded(node.id);
               setCurrentDirectory(node.path);
             } else {
-              toggleFileSelection(node.path);
+              // Toggle file selection on single click - pass the node data
+              toggleFileSelection(node.path, node);
             }
           }}
-          onDoubleClick={() => !isDirectory && node.fileData && setViewedFile(node.fileData)}
+          onDoubleClick={(e) => {
+            // Stop propagation to prevent parent handlers from firing
+            e.stopPropagation();
+            
+            if (!isDirectory && node.fileData) {
+              // Open file on double click
+              setViewedFile(node.fileData);
+            }
+          }}
         >
           {isDirectory && (
             <div className="file-browser-item-icon">
@@ -807,6 +999,7 @@ const App = () => {
               : <File size={16} />
             }
           </div>
+          
           <div className="file-browser-item-name">{node.name}</div>
           {!isDirectory && node.fileData && (
             <div className="file-browser-item-tokens">{node.fileData.tokenCount.toLocaleString()}</div>
@@ -815,7 +1008,7 @@ const App = () => {
         
         {isDirectory && node.isExpanded && node.children && (
           <div className="file-browser-children">
-            {node.children.map(child => renderFileTreeNode(child))}
+            {Object.values(node.children).map(child => renderFileTreeNode(child))}
           </div>
         )}
       </div>
@@ -841,31 +1034,51 @@ const App = () => {
         navigateBack={() => {
           if (fileHistory.length > 1) {
             const prevFile = fileHistory[1];
+            setFileHistory(prev => prev.slice(1));
             openFile(prevFile);
           }
         }}
         navigateForward={() => {
-          // Implement forward navigation if needed
+          // Not implemented yet
         }}
         navigateToParentFolder={() => {
           if (currentDirectory) {
-            const parentDir = currentDirectory.split('/').slice(0, -1).join('/');
+            const parts = currentDirectory.split('/');
+            parts.pop();
+            const parentDir = parts.join('/');
             setCurrentDirectory(parentDir || selectedFolder);
           }
         }}
         canNavigateBack={fileHistory.length > 1}
         canNavigateForward={false}
-        breadcrumbs={
-          (currentDirectory || selectedFolder)?.split('/').map((part, index, array) => ({
-            name: part || 'Root',
-            path: array.slice(0, index + 1).join('/'),
-            isLast: index === array.length - 1
-          })) || []
-        }
-        currentFilePath={currentFile}
+        breadcrumbs={getBreadcrumbs()}
+        currentFilePath={viewedFile?.path}
       />
       <div className="file-browser">
         {buildFileTree().map(node => renderFileTreeNode(node))}
+      </div>
+      
+      {/* File Selection Counter */}
+      <div className="file-selection-counter">
+        <span className="counter-label">Selected Files:</span>
+        <span className="counter-value">{fileCounter}</span>
+        
+        <span className="token-counter">
+          <span className="counter-label">Total Tokens:</span>
+          <span className="counter-value">{tokenCounter.toLocaleString()}</span>
+        </span>
+        
+        {fileCounter > 0 && (
+          <button 
+            className="counter-clear-btn"
+            onClick={() => {
+              resetCounters();
+            }}
+            title="Clear selection"
+          >
+            Clear
+          </button>
+        )}
       </div>
     </div>
   );
@@ -986,7 +1199,6 @@ const App = () => {
     
     // Switch to select page to show the file browser
     setActivePage("select");
-    setViewMode("file-browser");
     
     // Expand the folder in the file tree
     const newExpandedNodes = { ...expandedNodes };
@@ -1111,7 +1323,14 @@ const App = () => {
       // Force a refresh of the file list after a short delay to ensure the folder is created
       setTimeout(() => {
         window.electron.send("request-file-list", selectedFolder);
-      }, 100);
+        
+        // Create an empty file inside the new folder without opening it
+        window.electron.send("create-file", {
+          folderPath: fullPath,
+          fileName: "empty.txt",
+          content: ""
+        });
+      }, 500);
     }
   };
 
@@ -1138,15 +1357,93 @@ const App = () => {
     }
   };
 
+  // Effect to update displayed files when selectedFiles changes
+  useEffect(() => {
+    // Only update if we have files loaded
+    if (allFiles.length > 0) {
+      console.log("Selected files changed, updating displayed files...");
+      applyFiltersAndSort(allFiles, sortOrder, searchTerm);
+    }
+  }, [selectedFiles, allFiles, sortOrder, searchTerm]);
+
+  // Debug effect to log selected files and token count
+  useEffect(() => {
+    console.log(`Selected files: ${selectedFiles.length}, File counter: ${fileCounter}`);
+    console.log(`Token count: ${calculateCounterTokens()}`);
+  }, [selectedFiles, fileCounter]);
+
+  // Update the useEffect to sync selection changes with the renderer process
+  useEffect(() => {
+    // Save selection to localStorage
+    localStorage.setItem(STORAGE_KEYS.SELECTED_FILES, JSON.stringify(selectedFiles));
+    
+    // Sync selections with renderer process
+    if (window.electron) {
+      window.electron.send("update-selected-files", selectedFiles);
+    }
+    
+    // Check token warning limit
+    const totalTokens = calculateTotalTokens();
+    setShowTokenWarning(totalTokens > tokenWarningLimit);
+  }, [selectedFiles, tokenWarningLimit]);
+
+  // Add listener for selection updates from renderer
+  useEffect(() => {
+    if (window.electron) {
+      const handleSelectionUpdate = (files) => {
+        // Only update if the selection is different to avoid loops
+        if (JSON.stringify(files) !== JSON.stringify(selectedFiles)) {
+          setSelectedFiles(files);
+        }
+      };
+      
+      window.electron.receive("selected-files-updated", handleSelectionUpdate);
+    }
+    
+    return () => {
+      // The cleanup function now safely removes listeners
+      if (window.electron && window.electron.removeAllListeners) {
+        window.electron.removeAllListeners("selected-files-updated");
+      }
+    };
+  }, [selectedFiles]);
+
+  // Helper function to count valid selected files
+  const getValidSelectedCount = () => {
+    return selectedFiles.filter(path => {
+      const file = allFiles.find(f => f.path === path);
+      return file && !file.isBinary && !file.isSkipped;
+    }).length;
+  };
+
+  // Helper function to format the file counter text
+  const getFileCountText = () => {
+    const validCount = getValidSelectedCount();
+    const displayedCount = displayedFiles.length;
+    
+    if (displayedCount === validCount) {
+      return `${validCount} files selected`;
+    } else {
+      return `${displayedCount} files displayed (${validCount} total selected)`;
+    }
+  };
+
   return (
     <div className="app-container">
       <div className="header">
         <h1>PasteMax</h1>
         <div className="folder-info">
           {selectedFolder ? (
-            <div className="selected-folder">{selectedFolder}</div>
+            <>
+              <div className="selected-folder">
+                <span className="folder-label">Selected Folder:</span>
+                <span className="folder-path">{selectedFolder}</span>
+              </div>
+            </>
           ) : (
-            <span>No folder selected</span>
+            <div className="no-folder-message">
+              No folder selected. Please open a folder to get started.
+            </div>
           )}
           <button
             className="select-folder-btn"
@@ -1195,49 +1492,15 @@ const App = () => {
                 <div className="content-title">
                   {activePage === "select" && (
                     <div className="view-dropdown">
-                      <div 
-                        className="view-dropdown-button"
-                        onClick={toggleViewDropdown}
-                      >
-                        {viewMode === "selected-files" ? "Selected Files" : "File Browser"}
+                      <div className="view-dropdown-button">
+                        File Browser
                       </div>
-                      {viewDropdownOpen && (
-                        <div className="view-dropdown-menu">
-                          <div 
-                            className={`view-dropdown-item ${viewMode === "selected-files" ? "active" : ""}`}
-                            onClick={() => toggleViewMode("selected-files")}
-                          >
-                            Selected Files
-                          </div>
-                          <div 
-                            className={`view-dropdown-item ${viewMode === "file-browser" ? "active" : ""}`}
-                            onClick={() => toggleViewMode("file-browser")}
-                          >
-                            File Browser
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
                 
-                {/* Token warning notification */}
-                {showTokenWarning && activePage !== "project" && (
-                  <div className={`token-warning ${calculateTotalTokens() > tokenWarningLimit ? 'exceeded' : 'near'}`}>
-                    <div className="token-warning-icon">⚠️</div>
-                    <div className="token-warning-message">
-                      {calculateTotalTokens() > tokenWarningLimit 
-                        ? `Token limit exceeded: ${calculateTotalTokens()} / ${tokenWarningLimit} tokens` 
-                        : `Approaching token limit: ${calculateTotalTokens()} / ${tokenWarningLimit} tokens`}
-                    </div>
-                    <button className="token-warning-close" onClick={() => setShowTokenWarning(false)}>×</button>
-                  </div>
-                )}
-                
                 <div className="content-actions">
-                  <div className="file-stats">
-                    {selectedFiles.length} files | ~{calculateTotalTokens().toLocaleString()} tokens
-                  </div>
+                  {/* File stats removed */}
                 </div>
               </div>
 
@@ -1245,30 +1508,7 @@ const App = () => {
                 <>
                   {activePage === "select" && (
                     <>
-                      {viewMode === "selected-files" ? (
-                        <FileList
-                          files={displayedFiles}
-                          selectedFiles={selectedFiles}
-                          toggleFileSelection={toggleFileSelection}
-                          viewedFile={viewedFile}
-                          onViewFile={(file) => setViewedFile(file)}
-                          onCloseView={() => setViewedFile(null)}
-                          problemHighlightingActive={problemHighlightingActive}
-                        />
-                      ) : (
-                        renderFileBrowser()
-                      )}
-                      
-                      {viewMode === "selected-files" && (
-                        <div className="copy-button-container">
-                          <CopyButton
-                            text={getSelectedFilesContent()}
-                            className="primary full-width"
-                          >
-                            <span>COPY ALL SELECTED ({selectedFiles.length} files)</span>
-                          </CopyButton>
-                        </div>
-                      )}
+                      {renderFileBrowser()}
                     </>
                   )}
 
@@ -1411,14 +1651,19 @@ const App = () => {
               )}
 
               {viewedFile && (
-                <FileList
-                  files={displayedFiles}
-                  selectedFiles={selectedFiles}
-                  toggleFileSelection={toggleFileSelection}
-                  viewedFile={viewedFile}
-                  onViewFile={(file) => setViewedFile(file)}
-                  onCloseView={() => setViewedFile(null)}
-                  problemHighlightingActive={problemHighlightingActive}
+                <EditorPage
+                  filePath={viewedFile.path}
+                  content={viewedFile.content}
+                  currentDirectory={currentDirectory || selectedFolder}
+                  onSave={saveFile}
+                  onClose={() => setViewedFile(null)}
+                  onCreateFile={handleFileCreationWithContent}
+                  onCreateFolder={handleCreateFolder}
+                  onNavigate={navigateToFileFromEditor}
+                  theme={themeMode === 'dark' ? 'tomorrow_night' : 'github'}
+                  fileHistory={fileHistory}
+                  recentFiles={recentFiles}
+                  recentFolders={recentFolders}
                 />
               )}
             </div>

@@ -105,11 +105,24 @@ input[type="search"]:focus {
 }
 
 .file-card-name {
-  font-weight: 500;
   flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.file-card-selection-indicator {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 16px;
+  margin-left: 8px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .file-card-info {

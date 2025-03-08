@@ -23,6 +23,9 @@ const FileList = ({
       selectedFiles.includes(file.path) && !file.isBinary && !file.isSkipped
   );
 
+  // Log info for debugging
+  console.log(`FileList: ${displayableFiles.length} displayable files out of ${selectedFiles.length} selected`);
+
   // Context menu handlers
   const handleContextMenu = useCallback((e) => {
     // Only show context menu when right-clicking on the container, not on file cards
@@ -293,7 +296,7 @@ const FileList = ({
               <FileCard
                 key={file.path}
                 file={file}
-                isSelected={true} // All displayed files are selected
+                isSelected={selectedFiles.includes(file.path)} // Check against selectedFiles
                 toggleSelection={toggleFileSelection}
                 onViewFile={handleViewFile}  // Pass our enhanced handler
                 problemHighlightingActive={problemHighlightingActive}

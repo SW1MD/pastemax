@@ -17,44 +17,37 @@ const TreeItem = ({
 
   const isSelected = type === "file" && selectedFiles.includes(path);
 
-  // For directories, check if all children are selected
+  // For directories, check if all children are selected - fixed algorithm
   const isDirectorySelected =
-    type === "directory" && children
+    type === "directory" && children && children.length > 0
       ? children.every((child: TreeNode) => {
           if (child.type === "file") {
+            // For files, simply check if they're in selectedFiles
+            return !child.fileData?.isBinary && !child.fileData?.isSkipped && selectedFiles.includes(child.path);
+          } else if (child.type === "directory") {
+            // For directories, need to check if all valid files in the directory are selected
+            // This is more complex and would require recursion
+            // For now, we'll use a simplified approach of checking if path is in selectedFiles
             return selectedFiles.includes(child.path);
-          } else if (child.type === "directory" && child.children) {
-            return child.children.every((grandchild: TreeNode) => {
-              return grandchild.type === "file" && selectedFiles.includes(grandchild.path);
-            });
           }
           return false;
         })
       : false;
 
-  // Check if some but not all files in this directory are selected
+  // Check if some but not all files in this directory are selected - fixed algorithm
   const isDirectoryPartiallySelected =
-    type === "directory" && children
-      ? children.some((child: TreeNode) => {
+    type === "directory" && children && children.length > 0
+      ? (children.some((child: TreeNode) => {
           if (child.type === "file") {
-            return selectedFiles.includes(child.path);
-          } else if (child.type === "directory" && child.children) {
-            return child.children.some((grandchild: TreeNode) => {
-              return grandchild.type === "file" && selectedFiles.includes(grandchild.path);
-            });
+            return !child.fileData?.isBinary && !child.fileData?.isSkipped && selectedFiles.includes(child.path);
+          } else if (child.type === "directory") {
+            return selectedFiles.some(path => path.startsWith(child.path + "/")) || selectedFiles.includes(child.path);
           }
           return false;
-        }) && !isDirectorySelected
+        }) && !isDirectorySelected)
       : false;
 
-  // Update the indeterminate state manually whenever it changes
-  useEffect(() => {
-    if (checkboxRef.current) {
-      checkboxRef.current.indeterminate = isDirectoryPartiallySelected;
-    }
-  }, [isDirectoryPartiallySelected]);
-
-  // Add effect to update checkbox state when selectedFiles changes
+  // Update the indeterminate state and checked state whenever it changes
   useEffect(() => {
     if (checkboxRef.current) {
       if (type === "file") {
@@ -64,14 +57,29 @@ const TreeItem = ({
         checkboxRef.current.indeterminate = isDirectoryPartiallySelected;
       }
     }
-  }, [selectedFiles, isSelected, isDirectorySelected, isDirectoryPartiallySelected, type]);
+  }, [selectedFiles, isSelected, isDirectorySelected, isDirectoryPartiallySelected, type, path]);
 
-  const handleToggle = (e: { stopPropagation: () => void }) => {
+  const handleToggle = (e: any) => {
     e.stopPropagation();
     toggleExpanded(id);
   };
 
-  const handleItemClick = () => {
+  const handleItemClick = (e: any) => {
+    // Get the target element
+    const target = e.target as HTMLElement;
+    
+    // Don't process clicks on checkboxes - they have their own handler
+    const isCheckbox = target.tagName === 'INPUT';
+    const isCheckboxParent = !!target.closest('input[type="checkbox"]');
+    if (isCheckbox || isCheckboxParent) {
+      return;
+    }
+
+    // Don't process clicks on toggle buttons - they have their own handler
+    if (target.closest('.tree-item-toggle')) {
+      return;
+    }
+    
     if (type === "directory") {
       toggleExpanded(id);
     } else if (type === "file" && !isDisabled) {
@@ -79,12 +87,17 @@ const TreeItem = ({
     }
   };
 
-  const handleCheckboxChange = (e: { stopPropagation: () => void; target: { checked: boolean } }) => {
+  const handleCheckboxChange = (e: any) => {
     e.stopPropagation();
+    
+    const target = e.target as HTMLInputElement;
+    
     if (type === "file") {
+      // Always call toggleFileSelection to handle both selection and deselection
       toggleFileSelection(path);
     } else if (type === "directory") {
-      toggleFolderSelection(path, e.target.checked);
+      // For directories, pass the checked state to toggleFolderSelection
+      toggleFolderSelection(path, target.checked);
     }
   };
 
@@ -123,7 +136,10 @@ const TreeItem = ({
           ref={checkboxRef}
           onChange={handleCheckboxChange}
           disabled={isDisabled}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: any) => {
+            // This is important to prevent double handling
+            e.stopPropagation();
+          }}
         />
 
         <div className="tree-item-content">

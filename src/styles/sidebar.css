@@ -190,9 +190,15 @@
 }
 
 .file-browser-item.selected {
-  background-color: var(--hover-color);
+  background-color: var(--selection-color);
+  color: var(--text-color);
   font-weight: 500;
-  border-left: 2px solid var(--primary-color);
+  border-left: 3px solid var(--primary-color);
+}
+
+.file-browser-item.partially-selected {
+  background-color: var(--hover-color);
+  border-left: 3px solid var(--selection-color);
 }
 
 .file-browser-item.directory {
@@ -219,11 +225,11 @@
 
 .file-browser-item-tokens {
   font-size: 11px;
-  color: var(--secondary-color);
+  color: var(--text-secondary);
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 3px;
   background-color: var(--hover-color);
-  padding: 2px 6px;
-  border-radius: 10px;
-  margin-left: 8px;
 }
 
 .file-browser-item-icon svg {
@@ -245,7 +251,7 @@
 }
 
 .file-icon {
-  color: var(--icon-color);
+  color: var(--text-color) !important;
 }
 
 .file-browser-item.directory .file-browser-item-name::before,
@@ -587,4 +593,132 @@
   border-radius: 4px;
   margin-bottom: 16px;
   font-size: 13px;
+}
+
+.file-browser-checkbox {
+  margin-right: 6px;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary-color);
+}
+
+.file-checkbox-container {
+  display: inline-block;
+  position: relative;
+  margin-right: 8px;
+  cursor: pointer;
+  user-select: none;
+  min-width: 16px;
+  z-index: 5;
+}
+
+.file-browser-checkbox {
+  opacity: 1;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+
+.checkbox-custom {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 16px;
+  width: 16px;
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.file-browser-checkbox:checked ~ .checkbox-custom {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Partial selection (for folders) */
+.checkbox-custom.partial {
+  background-color: var(--hover-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-custom.partial:after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 8px;
+  height: 2px;
+  background-color: var(--primary-color);
+}
+
+.file-browser-checkbox:checked ~ .checkbox-custom:after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 3px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Additional style for folder checkboxes */
+.folder-checkbox ~ .checkbox-custom {
+  background-color: var(--card-background);
+}
+
+.folder-checkbox:checked ~ .checkbox-custom {
+  background-color: var(--primary-color);
+}
+
+/* File Selection Counter */
+.file-selection-counter {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: var(--card-background);
+  border-top: 1px solid var(--border-color);
+  font-size: 14px;
+}
+
+.counter-label {
+  color: var(--text-color);
+  margin-right: 8px;
+  font-weight: 500;
+}
+
+.counter-value {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 24px;
+  text-align: center;
+}
+
+.counter-clear-btn {
+  margin-left: auto;
+  background-color: var(--hover-color);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-color);
+}
+
+.counter-clear-btn:hover {
+  background-color: var(--selection-color);
+}
+
+.token-counter {
+  margin-left: 16px;
+  display: flex;
+  align-items: center;
 } 

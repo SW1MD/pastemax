@@ -1,0 +1,22 @@
+/* Override checkbox styles to hide them */
+.file-checkbox-container {
+  display: none !important;
+}
+
+.file-browser-checkbox {
+  display: none !important;
+}
+
+.checkbox-custom {
+  display: none !important;
+}
+
+/* Remove selected styles since we're not using checkboxes anymore */
+.file-browser-item.selected {
+  background-color: transparent;
+}
+
+.file-browser-item.partially-selected {
+  background-color: transparent;
+  border-left: none;
+} 

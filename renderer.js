@@ -46,7 +46,40 @@ window.electron.receive("folder-selected", (selectedPath) => {
 window.electron.receive("file-list-data", (files) => {
   // Handle received files data
   allFiles = files;
-  applyFiltersAndSort();
+  
+  // Auto-select all valid files (not binary or skipped)
+  const validFiles = files.filter(file => !file.isBinary && !file.isSkipped);
+  
+  if (validFiles.length > 0) {
+    // Clear and re-add selected files
+    selectedFiles = validFiles.map(file => file.path);
+    console.log(`Auto-selected ${selectedFiles.length} files`);
+    
+    // Apply filters and sort to update the displayed files
+    applyFiltersAndSort();
+    
+    // Notify React app about selection
+    window.electron.send("selected-files-updated", selectedFiles);
+  } else {
+    applyFiltersAndSort();
+  }
+});
+
+// Add listener for selection updates from React app
+window.electron.receive("update-selected-files", (newSelectedFiles) => {
+  // Only update if selection has changed to avoid loops
+  if (JSON.stringify(newSelectedFiles) !== JSON.stringify(selectedFiles)) {
+    console.log("Received updated selection from React app:", newSelectedFiles.length, "files");
+    selectedFiles = newSelectedFiles;
+    updateTotalTokens();
+    
+    // Update UI to reflect new selections - all checkboxes, not just currently displayed ones
+    const checkboxes = document.querySelectorAll('#file-list input[type="checkbox"]');
+    checkboxes.forEach((checkbox) => {
+      const filePath = checkbox.value;
+      checkbox.checked = selectedFiles.includes(filePath);
+    });
+  }
 });
 
 // Sort the files based on the selected sort option
@@ -97,10 +130,33 @@ filterInput.addEventListener("input", () => {
 
 // Apply both filtering and sorting
 function applyFiltersAndSort() {
-  // First filter
-  displayedFiles = filterFiles(allFiles, currentFilter);
+  // Ensure we're working with a deduplicated list of files
+  const uniqueFilePaths = new Set();
+  const uniqueAllFiles = [];
+  
+  allFiles.forEach(file => {
+    if (!uniqueFilePaths.has(file.path)) {
+      uniqueFilePaths.add(file.path);
+      uniqueAllFiles.push(file);
+    }
+  });
+
+  // First filter to only include selected files that aren't binary or skipped
+  let filteredFiles = uniqueAllFiles.filter(
+    (file) => 
+      selectedFiles.includes(file.path) && 
+      !file.isBinary && 
+      !file.isSkipped
+  );
+  
+  // Then apply text search filter
+  if (currentFilter) {
+    filteredFiles = filterFiles(filteredFiles, currentFilter);
+  }
+  
   // Then sort
-  displayedFiles = sortFiles(displayedFiles, currentSort);
+  displayedFiles = sortFiles(filteredFiles, currentSort);
+  
   // Render the list
   renderFileList(displayedFiles);
 }
@@ -108,10 +164,18 @@ function applyFiltersAndSort() {
 // Calculate total tokens from selected files
 function calculateTotalTokens() {
   let total = 0;
+  // Create a Set to ensure we only count each file once
+  const countedPaths = new Set();
 
   selectedFiles.forEach((selectedPath) => {
+    // Skip if we've already counted this file
+    if (countedPaths.has(selectedPath)) {
+      return;
+    }
+    
     const fileData = allFiles.find((f) => f.path === selectedPath);
-    if (fileData) {
+    if (fileData && !fileData.isBinary && !fileData.isSkipped) {
+      countedPaths.add(selectedPath);
       total += fileData.tokenCount;
     }
   });
@@ -122,71 +186,99 @@ function calculateTotalTokens() {
 // Update the total tokens display
 function updateTotalTokens() {
   const totalTokens = calculateTotalTokens();
-  document.getElementById(
-    "total-tokens",
-  ).textContent = `Total Tokens: ${totalTokens.toLocaleString()}`;
+  const totalTokensElement = document.getElementById("total-tokens");
+  if (totalTokensElement) {
+    totalTokensElement.textContent = `Total Tokens: ${totalTokens.toLocaleString()}`;
+  }
+  
+  // Also update file count display
+  const fileCountDisplay = document.getElementById("file-count-display");
+  if (fileCountDisplay) {
+    // Count only valid selected files
+    const validSelectedFiles = selectedFiles.filter(path => {
+      const file = allFiles.find(f => f.path === path);
+      return file && !file.isBinary && !file.isSkipped;
+    });
+    
+    fileCountDisplay.textContent = `${validSelectedFiles.length} files selected`;
+  }
 }
 
 // Handle checkbox changes
 function handleCheckboxChange(event) {
   const filePath = event.target.value;
+  
   if (event.target.checked) {
+    // Add to selection if not already there
     if (!selectedFiles.includes(filePath)) {
       selectedFiles.push(filePath);
     }
   } else {
+    // Remove from selection
     selectedFiles = selectedFiles.filter((path) => path !== filePath);
   }
+  
+  // Update displayed files based on new selection
   updateTotalTokens();
-  console.log("Selected files:", selectedFiles.length);
+  applyFiltersAndSort();
+  
+  // Send updated selection to React app
+  window.electron.send("selected-files-updated", selectedFiles);
+  
+  console.log("Selection changed, total selected:", selectedFiles.length);
 }
 
 // Select All button functionality
 selectAllButton.addEventListener("click", () => {
-  const checkboxes = document.querySelectorAll(
-    '#file-list input[type="checkbox"]',
-  );
-
-  // Get the paths of all currently displayed files
-  const displayedPaths = displayedFiles.map((file) => file.path);
-
-  // Remove any previously selected files that are no longer displayed
-  selectedFiles = selectedFiles.filter((path) => displayedPaths.includes(path));
-
-  // Add all currently displayed files
-  checkboxes.forEach((checkbox) => {
-    checkbox.checked = true;
-    const filePath = checkbox.value;
-    if (!selectedFiles.includes(filePath)) {
-      selectedFiles.push(filePath);
+  // Get all selectable files (not binary/skipped)
+  const selectableFiles = allFiles.filter(file => !file.isBinary && !file.isSkipped);
+  
+  // For the current filter, get the paths that should be displayed
+  const displayedPaths = selectableFiles
+    .filter(file => 
+      currentFilter === "" || 
+      file.name.toLowerCase().includes(currentFilter.toLowerCase()) || 
+      file.path.toLowerCase().includes(currentFilter.toLowerCase())
+    )
+    .map(file => file.path);
+  
+  // Add all displayed files to selection
+  displayedPaths.forEach(path => {
+    if (!selectedFiles.includes(path)) {
+      selectedFiles.push(path);
     }
   });
-
+  
+  // Update UI checkboxes
   updateTotalTokens();
-  console.log("Selected all displayed files:", selectedFiles.length);
+  
+  // Re-render the list with new selections
+  applyFiltersAndSort();
+  
+  // Send updated selection to React app
+  window.electron.send("selected-files-updated", selectedFiles);
+  
+  console.log("Selected all files:", selectedFiles.length);
 });
 
 // Deselect All button functionality
 deselectAllButton.addEventListener("click", () => {
-  const checkboxes = document.querySelectorAll(
-    '#file-list input[type="checkbox"]',
-  );
-
-  // Get the paths of all currently displayed files
-  const displayedPaths = displayedFiles.map((file) => file.path);
-
-  // Remove currently displayed files from selection
-  selectedFiles = selectedFiles.filter(
-    (path) => !displayedPaths.includes(path),
-  );
-
-  // Uncheck all displayed checkboxes
-  checkboxes.forEach((checkbox) => {
-    checkbox.checked = false;
-  });
-
+  // For the current filter, get the paths that should be displayed
+  const displayedPaths = displayedFiles.map(file => file.path);
+  
+  // Remove all displayed files from selection
+  selectedFiles = selectedFiles.filter(path => !displayedPaths.includes(path));
+  
+  // Update UI checkboxes
   updateTotalTokens();
-  console.log("Deselected all displayed files");
+  
+  // Re-render the list with new selections
+  applyFiltersAndSort();
+  
+  // Send updated selection to React app
+  window.electron.send("selected-files-updated", selectedFiles);
+  
+  console.log("Deselected all displayed files, remaining:", selectedFiles.length);
 });
 
 // Format file size to be human-readable
@@ -251,60 +343,63 @@ function renderFileList(files) {
   // Clear existing list
   fileList.innerHTML = "";
 
-  files.forEach((file) => {
+  // First deduplicate files to ensure we don't count duplicates
+  const uniqueFilePaths = new Set();
+  const uniqueFiles = [];
+  
+  files.forEach(file => {
+    if (!uniqueFilePaths.has(file.path)) {
+      uniqueFilePaths.add(file.path);
+      uniqueFiles.push(file);
+    }
+  });
+
+  // Now render the unique files
+  uniqueFiles.forEach((file) => {
     const li = document.createElement("li");
+    li.className = "file-item";
 
     // Create checkbox
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = file.path;
+    checkbox.id = `file-${file.path.replace(/[^a-z0-9]/gi, '_')}`;
+    checkbox.className = "file-checkbox";
 
-    // Don't allow selecting binary or skipped files
-    if (file.isBinary || file.isSkipped) {
-      checkbox.disabled = true;
-    } else {
-      checkbox.addEventListener("change", handleCheckboxChange);
-      // If this file is in selectedFiles, check the box
-      if (selectedFiles.includes(file.path)) {
-        checkbox.checked = true;
-      }
-    }
+    // Checkbox should be checked if file is in selectedFiles
+    checkbox.checked = selectedFiles.includes(file.path);
+    checkbox.addEventListener("change", handleCheckboxChange);
 
-    // Create label for the filename
-    const label = document.createElement("span");
-    label.textContent = file.name;
+    // Create label for the checkbox
+    const checkboxLabel = document.createElement("label");
+    checkboxLabel.htmlFor = checkbox.id;
+    checkboxLabel.className = "file-label";
 
-    // Apply styling for binary and skipped files
-    if (file.isBinary) {
-      li.classList.add("binary-file");
-      label.innerHTML = `${file.name} <span class="file-badge binary-badge">${file.fileType}</span>`;
-    } else if (file.isSkipped) {
-      li.classList.add("skipped-file");
-      label.innerHTML = `${file.name} <span class="file-badge error-badge">${file.error}</span>`;
-    }
+    // Create file name display
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "file-name";
+    nameDiv.textContent = file.name;
 
     // Create token count display
     const tokenCountSpan = document.createElement("span");
-    if (file.isBinary || file.isSkipped) {
-      tokenCountSpan.textContent = " (Tokens: N/A)";
-    } else {
-      tokenCountSpan.textContent = ` (Tokens: ${file.tokenCount.toLocaleString()})`;
-    }
-    tokenCountSpan.style.color = "#666";
-    tokenCountSpan.style.marginLeft = "10px";
+    tokenCountSpan.className = "file-tokens";
+    tokenCountSpan.textContent = `Tokens: ${file.tokenCount.toLocaleString()}`;
 
     // Create file size display
     const fileSizeSpan = document.createElement("span");
-    fileSizeSpan.textContent = ` (Size: ${formatFileSize(file.size)})`;
-    fileSizeSpan.style.color = "#666";
-    fileSizeSpan.style.marginLeft = "5px";
+    fileSizeSpan.className = "file-size";
+    fileSizeSpan.textContent = `Size: ${formatFileSize(file.size)}`;
 
     // Add the checkbox and labels to the list item
     li.appendChild(checkbox);
-    li.appendChild(label);
+    li.appendChild(checkboxLabel);
+    li.appendChild(nameDiv);
     li.appendChild(tokenCountSpan);
     li.appendChild(fileSizeSpan);
 
     fileList.appendChild(li);
   });
+  
+  // Update token count and file count
+  updateTotalTokens();
 }

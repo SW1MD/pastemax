@@ -46,7 +46,9 @@ contextBridge.exposeInMainWorld("electron", {
       "read-file",
       "count-tokens",
       "refresh-file",
-      "show-save-dialog"
+      "show-save-dialog",
+      "update-selected-files",
+      "selected-files-updated"
     ];
     if (validChannels.includes(channel)) {
       // Ensure data is serializable before sending
@@ -65,7 +67,9 @@ contextBridge.exposeInMainWorld("electron", {
       "file-read",
       "tokens-counted",
       "file-refreshed",
-      "save-dialog-response"
+      "save-dialog-response",
+      "update-selected-files",
+      "selected-files-updated"
     ];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
@@ -74,6 +78,25 @@ contextBridge.exposeInMainWorld("electron", {
         const serializedArgs = args.map(ensureSerializable);
         func(...serializedArgs);
       });
+    }
+  },
+  removeAllListeners: (channel) => {
+    const validChannels = [
+      "folder-selected",
+      "file-list-data",
+      "file-processing-status",
+      "file-created",
+      "folder-created",
+      "file-saved",
+      "file-read",
+      "tokens-counted",
+      "file-refreshed",
+      "save-dialog-response",
+      "update-selected-files",
+      "selected-files-updated"
+    ];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.removeAllListeners(channel);
     }
   },
   invoke: async (channel, ...args) => {
