@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FilePlus, FolderPlus, X, Check, ChevronRight, ChevronLeft, Folder, FolderOpen, File, RefreshCw } from 'lucide-react';
+import { FilePlus, FolderPlus, X, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Folder, FolderOpen, File, RefreshCw } from 'lucide-react';
 
 const FileManager = ({ 
   currentDirectory, 
@@ -14,7 +14,8 @@ const FileManager = ({
   canNavigateBack = false,
   canNavigateForward = false,
   breadcrumbs = [],
-  currentFilePath
+  currentFilePath,
+  isExpanded = false
 }) => {
   const [showCreateFileDialog, setShowCreateFileDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
@@ -82,9 +83,9 @@ const FileManager = ({
             <button 
               className="file-manager-nav-btn"
               onClick={navigateToParentFolder}
-              title="Go to parent folder"
+              title={isExpanded ? "Collapse all folders" : "Expand all folders"}
             >
-              <Folder size={16} />
+              {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
           </div>
           

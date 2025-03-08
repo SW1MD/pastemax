@@ -170,6 +170,194 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
     closeContextMenu();
   }, [url]);
 
+  // Select all text areas on the page
+  const selectTextAreas = useCallback(() => {
+    if (webviewRef.current) {
+      const webview = webviewRef.current;
+      
+      // For Electron webview
+      if (window.electron) {
+        // Execute script in the webview to find all text areas and create a selection UI
+        webview.executeJavaScript(`
+          (function() {
+            // Find all interactive elements
+            const textAreas = Array.from(document.querySelectorAll('textarea'));
+            const textInputs = Array.from(document.querySelectorAll('input[type="text"], input[type="search"], input[type="email"], input[type="password"], input[type="tel"], input[type="url"]'));
+            const editableElements = Array.from(document.querySelectorAll('[contenteditable="true"]'));
+            
+            // Combine all elements
+            const allElements = [
+              ...textAreas.map(el => ({ type: 'textarea', element: el })),
+              ...textInputs.map(el => ({ type: 'input', element: el })),
+              ...editableElements.map(el => ({ type: 'contenteditable', element: el }))
+            ];
+            
+            if (allElements.length === 0) {
+              alert('No text areas found on this page');
+              return false;
+            }
+            
+            // If only one element, select it directly
+            if (allElements.length === 1) {
+              const { type, element } = allElements[0];
+              element.focus();
+              if (type === 'textarea' || type === 'input') {
+                element.select();
+              } else {
+                // For contenteditable
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+              }
+              return true;
+            }
+            
+            // Create a selection UI
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            overlay.style.zIndex = '9999999';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.color = 'white';
+            overlay.style.fontFamily = 'Arial, sans-serif';
+            
+            const container = document.createElement('div');
+            container.style.backgroundColor = '#222';
+            container.style.borderRadius = '8px';
+            container.style.padding = '20px';
+            container.style.width = '80%';
+            container.style.maxWidth = '600px';
+            container.style.maxHeight = '80vh';
+            container.style.overflowY = 'auto';
+            
+            const title = document.createElement('h2');
+            title.textContent = 'Select a text area';
+            title.style.margin = '0 0 20px 0';
+            title.style.color = 'white';
+            title.style.fontSize = '18px';
+            
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'Close';
+            closeButton.style.position = 'absolute';
+            closeButton.style.top = '10px';
+            closeButton.style.right = '10px';
+            closeButton.style.padding = '5px 10px';
+            closeButton.style.backgroundColor = '#444';
+            closeButton.style.color = 'white';
+            closeButton.style.border = 'none';
+            closeButton.style.borderRadius = '4px';
+            closeButton.style.cursor = 'pointer';
+            
+            closeButton.onclick = () => {
+              document.body.removeChild(overlay);
+            };
+            
+            container.appendChild(title);
+            container.appendChild(closeButton);
+            
+            // Create list of elements
+            allElements.forEach((item, index) => {
+              const { type, element } = item;
+              
+              // Get a preview of the element's content
+              let content = '';
+              if (type === 'textarea' || type === 'input') {
+                content = element.value.substring(0, 50);
+              } else {
+                content = element.textContent.substring(0, 50);
+              }
+              
+              if (content.length === 0) {
+                content = `[Empty ${type}]`;
+              } else if (content.length === 50) {
+                content += '...';
+              }
+              
+              // Create a button for this element
+              const button = document.createElement('div');
+              button.style.padding = '10px';
+              button.style.margin = '5px 0';
+              button.style.backgroundColor = '#333';
+              button.style.borderRadius = '4px';
+              button.style.cursor = 'pointer';
+              button.style.display = 'flex';
+              button.style.flexDirection = 'column';
+              
+              const typeLabel = document.createElement('div');
+              typeLabel.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+              typeLabel.style.fontSize = '14px';
+              typeLabel.style.fontWeight = 'bold';
+              typeLabel.style.marginBottom = '5px';
+              
+              const contentPreview = document.createElement('div');
+              contentPreview.textContent = content;
+              contentPreview.style.fontSize = '12px';
+              contentPreview.style.color = '#ccc';
+              contentPreview.style.whiteSpace = 'nowrap';
+              contentPreview.style.overflow = 'hidden';
+              contentPreview.style.textOverflow = 'ellipsis';
+              
+              button.appendChild(typeLabel);
+              button.appendChild(contentPreview);
+              
+              button.onmouseover = () => {
+                button.style.backgroundColor = '#444';
+              };
+              
+              button.onmouseout = () => {
+                button.style.backgroundColor = '#333';
+              };
+              
+              button.onclick = () => {
+                // Select the chosen element
+                element.focus();
+                if (type === 'textarea' || type === 'input') {
+                  element.select();
+                } else {
+                  // For contenteditable
+                  const range = document.createRange();
+                  range.selectNodeContents(element);
+                  const selection = window.getSelection();
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                }
+                
+                // Remove the overlay
+                document.body.removeChild(overlay);
+              };
+              
+              container.appendChild(button);
+            });
+            
+            overlay.appendChild(container);
+            document.body.appendChild(overlay);
+            
+            return true;
+          })();
+        `).then(result => {
+          if (!result) {
+            console.log("No text areas found on the page");
+          }
+        }).catch(err => {
+          console.error("Error selecting text areas:", err);
+        });
+      } else {
+        // For iframe fallback, we can't access the content due to same-origin policy
+        console.log("Text area selection not available in iframe mode");
+      }
+    }
+    closeContextMenu();
+  }, []);
+
   // Copy current URL
   const copyCurrentUrl = useCallback(() => {
     navigator.clipboard.writeText(url);
@@ -195,9 +383,9 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
     },
     { divider: true },
     {
-      icon: <ExternalLink size={16} />,
-      label: "Open in default browser",
-      onClick: openInDefaultBrowser
+      icon: <Clipboard size={16} />,
+      label: "Select text area",
+      onClick: selectTextAreas
     }
   ];
   
@@ -259,10 +447,10 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
     },
     { divider: true },
     {
-      icon: <ExternalLink size={16} />,
-      label: "Open in default browser",
+      icon: <Clipboard size={16} />,
+      label: "Select text area",
       onClick: () => {
-        openInDefaultBrowser();
+        selectTextAreas();
         closePopover();
       }
     },

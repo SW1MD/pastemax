@@ -16,4 +16,16 @@ FIX SELECTION ISSUES
 Add Delete functionality
 
 
+Prompts:
+
+Rules templates
+    Only mock data in testing
+    DO NOT TOUCH CODE THAT IS NOT DIRECTLY RELATED TO THE PROMPT
+    WHEN A FEATURE HAS BEEN PROVEN TO WORK WELL DO NOT TOUCH UNLESS INSTRUCTED OTHERWISE
+    KEEP FILES UNDER 500-600 LINES
+
+Generate + save specifications(roadmap)
+Generate + save Schema
+
+
 

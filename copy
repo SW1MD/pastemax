@@ -1,0 +1,44 @@
+
+
+// ---- File: C:\Users\murf\Documents\SQUIBLISH\src\app.ts ----
+
+import { BlockNoteEditor } from "@blocknote/core";
+import "@blocknote/core/style.css";
+import "@blocknote/mantine/style.css";
+
+// Create a new editor instance with some initial content
+const editor = BlockNoteEditor.create({
+  initialContent: [
+    {
+      type: "paragraph",
+      content: "Welcome to BlockNote! Try typing '/' to see the slash menu."
+    }
+  ]
+});
+
+// Get the root element
+const root = document.getElementById("root");
+if (!root) {
+  throw new Error("Root element not found");
+}
+
+// Add some basic styling to the root element
+root.style.maxWidth = "800px";
+root.style.margin = "20px auto";
+root.style.padding = "20px";
+root.style.boxShadow = "0 0 10px rgba(0,0,0,0.1)";
+root.style.borderRadius = "8px";
+root.style.backgroundColor = "white";
+
+// Mount the editor to the root element
+editor.mount(root);
+
+// The slash menu is enabled by default in BlockNote
+// Just type "/" in the editor to see the available options
+
+// ---- File: C:\Users\murf\Documents\SQUIBLISH\src\app.tsx ----
+
+ i am murf
+
+// ---- File: C:\Users\murf\Documents\SQUIBLISH\wildin\out ----
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { File, Folder, FolderOpen } from 'lucide-react';
+import { File, Folder, FolderOpen, ChevronRight, ChevronDown } from 'lucide-react';
 import Sidebar from "./components/Sidebar";
 import CopyButton from "./components/CopyButton";
 import WebBrowser from "./components/WebBrowser";
@@ -572,31 +572,85 @@ const App = () => {
 
   // Concatenate selected files content for copying
   const getSelectedFilesContent = () => {
-    // Sort selected files according to current sort order
-    const [sortKey, sortDir] = sortOrder.split("-");
-    const sortedSelected = allFiles
-      .filter((file) => selectedFiles.includes(file.path))
-      .sort((a, b) => {
-        let comparison = 0;
-
-        if (sortKey === "name") {
-          comparison = a.name.localeCompare(b.name);
-        } else if (sortKey === "tokens") {
-          comparison = a.tokenCount - b.tokenCount;
-        } else if (sortKey === "size") {
-          comparison = a.size - b.size;
-        }
-
-        return sortDir === "asc" ? comparison : -comparison;
-      });
-
-    if (sortedSelected.length === 0) {
+    // If fileCounter is 0, return a message
+    if (fileCounter === 0) {
       return "No files selected.";
     }
+    
+    // Get the files that are actually selected (counted in fileCounter)
+    const actuallySelectedFiles = [];
+    
+    // Iterate through the file tree to find selected files
+    const findSelectedFilesInTree = (nodes) => {
+      for (const node of nodes) {
+        if (node.type === "file" && selectedFiles.includes(node.path)) {
+          if (node.fileData) {
+            actuallySelectedFiles.push(node.fileData);
+          }
+        }
+        if (node.children && Object.keys(node.children).length > 0) {
+          findSelectedFilesInTree(Object.values(node.children));
+        }
+      }
+    };
+    
+    // Find selected files in the tree
+    findSelectedFilesInTree(buildFileTree());
+    
+    // If no files were found, try to use the selectedFiles array directly
+    if (actuallySelectedFiles.length === 0) {
+      console.log("No files found in tree, using selectedFiles directly");
+      // Sort selected files according to current sort order
+      const [sortKey, sortDir] = sortOrder.split("-");
+      const sortedSelected = allFiles
+        .filter((file) => selectedFiles.includes(file.path))
+        .sort((a, b) => {
+          let comparison = 0;
 
+          if (sortKey === "name") {
+            comparison = a.name.localeCompare(b.name);
+          } else if (sortKey === "tokens") {
+            comparison = a.tokenCount - b.tokenCount;
+          } else if (sortKey === "size") {
+            comparison = a.size - b.size;
+          }
+
+          return sortDir === "asc" ? comparison : -comparison;
+        });
+
+      if (sortedSelected.length === 0) {
+        return "No files selected.";
+      }
+
+      let concatenatedString = "";
+      sortedSelected.forEach((file) => {
+        concatenatedString += `\n\n// ---- File: ${file.path} ----\n\n`;
+        concatenatedString += file.content;
+      });
+
+      return concatenatedString;
+    }
+    
+    // Sort the actually selected files
+    const [sortKey, sortDir] = sortOrder.split("-");
+    actuallySelectedFiles.sort((a, b) => {
+      let comparison = 0;
+
+      if (sortKey === "name") {
+        comparison = a.name.localeCompare(b.name);
+      } else if (sortKey === "tokens") {
+        comparison = a.tokenCount - b.tokenCount;
+      } else if (sortKey === "size") {
+        comparison = a.size - b.size;
+      }
+
+      return sortDir === "asc" ? comparison : -comparison;
+    });
+    
+    // Concatenate the content of the selected files
     let concatenatedString = "";
-    sortedSelected.forEach((file) => {
-      concatenatedString += `\n\n// ---- File: ${file.name} ----\n\n`;
+    actuallySelectedFiles.forEach((file) => {
+      concatenatedString += `\n\n// ---- File: ${file.path} ----\n\n`;
       concatenatedString += file.content;
     });
 
@@ -989,7 +1043,7 @@ const App = () => {
                   toggleExpanded(node.id);
                 }}
               >
-                {node.isExpanded ? '▼' : '►'}
+                {node.isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </span>
             </div>
           )}
@@ -1016,72 +1070,104 @@ const App = () => {
   };
 
   // Update the file browser container to use FileManager
-  const renderFileBrowser = () => (
-    <div className="file-browser-container">
-      <FileManager
-        currentDirectory={currentDirectory || selectedFolder}
-        onCreateFile={handleFileCreationWithContent}
-        onCreateFolder={handleCreateFolder}
-        onNavigate={(path, isFolder) => {
-          if (isFolder) {
-            setCurrentDirectory(path);
-          } else {
-            openFile(path);
-          }
-        }}
-        recentFiles={recentFiles}
-        recentFolders={recentFolders}
-        navigateBack={() => {
-          if (fileHistory.length > 1) {
-            const prevFile = fileHistory[1];
-            setFileHistory(prev => prev.slice(1));
-            openFile(prevFile);
-          }
-        }}
-        navigateForward={() => {
-          // Not implemented yet
-        }}
-        navigateToParentFolder={() => {
-          if (currentDirectory) {
-            const parts = currentDirectory.split('/');
-            parts.pop();
-            const parentDir = parts.join('/');
-            setCurrentDirectory(parentDir || selectedFolder);
-          }
-        }}
-        canNavigateBack={fileHistory.length > 1}
-        canNavigateForward={false}
-        breadcrumbs={getBreadcrumbs()}
-        currentFilePath={viewedFile?.path}
-      />
-      <div className="file-browser">
-        {buildFileTree().map(node => renderFileTreeNode(node))}
-      </div>
-      
-      {/* File Selection Counter */}
-      <div className="file-selection-counter">
-        <span className="counter-label">Selected Files:</span>
-        <span className="counter-value">{fileCounter}</span>
+  const renderFileBrowser = () => {
+    // Check if most folders are expanded or collapsed
+    const expandedCount = Object.values(expandedNodes).filter(Boolean).length;
+    const totalNodes = Object.keys(expandedNodes).length;
+    const isExpanded = expandedCount > totalNodes / 2;
+    
+    return (
+      <div className="file-browser-container">
+        <FileManager
+          currentDirectory={currentDirectory || selectedFolder}
+          onCreateFile={handleFileCreationWithContent}
+          onCreateFolder={handleCreateFolder}
+          onNavigate={(path, isFolder) => {
+            if (isFolder) {
+              setCurrentDirectory(path);
+            } else {
+              openFile(path);
+            }
+          }}
+          recentFiles={recentFiles}
+          recentFolders={recentFolders}
+          navigateBack={() => {
+            if (fileHistory.length > 1) {
+              const prevFile = fileHistory[1];
+              setFileHistory(prev => prev.slice(1));
+              openFile(prevFile);
+            }
+          }}
+          navigateForward={() => {
+            // Not implemented yet
+          }}
+          navigateToParentFolder={() => {
+            // Toggle expand/collapse all folders
+            if (isExpanded) {
+              collapseAllFolders();
+            } else {
+              expandAllFolders();
+            }
+          }}
+          canNavigateBack={fileHistory.length > 1}
+          canNavigateForward={false}
+          breadcrumbs={getBreadcrumbs()}
+          currentFilePath={viewedFile?.path}
+          isExpanded={isExpanded}
+        />
+        <div className="file-browser">
+          {buildFileTree().map(node => renderFileTreeNode(node))}
+        </div>
         
-        <span className="token-counter">
-          <span className="counter-label">Total Tokens:</span>
-          <span className="counter-value">{tokenCounter.toLocaleString()}</span>
-        </span>
-        
-        {fileCounter > 0 && (
+        {/* File Selection Counter */}
+        <div className="file-selection-counter">
+          <span className="counter-label">Selected Files:</span>
+          <span className="counter-value">{fileCounter}</span>
+          
+          <span className="token-counter">
+            <span className="counter-label">Total Tokens:</span>
+            <span className="counter-value">{tokenCounter.toLocaleString()}</span>
+          </span>
+          
+          {/* Always show buttons */}
+          <button 
+            className="counter-copy-btn"
+            onClick={() => {
+              // Copy the content of all selected files
+              const content = getSelectedFilesContent();
+              navigator.clipboard.writeText(content);
+              // Show a temporary success message
+              setProcessingStatus({
+                status: "complete",
+                message: "Copied content to clipboard"
+              });
+              // Clear the message after 2 seconds
+              setTimeout(() => {
+                setProcessingStatus({
+                  status: "idle",
+                  message: ""
+                });
+              }, 2000);
+            }}
+            title="Copy content of selected files"
+            disabled={fileCounter === 0}
+          >
+            Copy
+          </button>
           <button 
             className="counter-clear-btn"
             onClick={() => {
               resetCounters();
             }}
             title="Clear selection"
+            disabled={fileCounter === 0}
           >
             Clear
           </button>
-        )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Inside the App component
   const [currentFile, setCurrentFile] = useState(null);
@@ -1375,6 +1461,7 @@ const App = () => {
   // Update the useEffect to sync selection changes with the renderer process
   useEffect(() => {
     // Save selection to localStorage
+    console.log('Saving selectedFiles to localStorage:', selectedFiles);
     localStorage.setItem(STORAGE_KEYS.SELECTED_FILES, JSON.stringify(selectedFiles));
     
     // Sync selections with renderer process
@@ -1426,6 +1513,55 @@ const App = () => {
     } else {
       return `${displayedCount} files displayed (${validCount} total selected)`;
     }
+  };
+
+  // Debug effect to log fileCounter
+  useEffect(() => {
+    console.log(`fileCounter: ${fileCounter}`);
+  }, [fileCounter]);
+
+  // Function to expand all folders
+  const expandAllFolders = () => {
+    const fileTree = buildFileTree();
+    const newExpandedNodes = { ...expandedNodes };
+    
+    // Recursive function to set all directory nodes to expanded
+    const expandAllNodes = (nodes) => {
+      for (const node of nodes) {
+        if (node.type === "directory") {
+          newExpandedNodes[node.id] = true;
+          if (node.children && Object.keys(node.children).length > 0) {
+            expandAllNodes(Object.values(node.children));
+          }
+        }
+      }
+    };
+    
+    expandAllNodes(fileTree);
+    setExpandedNodes(newExpandedNodes);
+    localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
+  };
+  
+  // Function to collapse all folders
+  const collapseAllFolders = () => {
+    const fileTree = buildFileTree();
+    const newExpandedNodes = { ...expandedNodes };
+    
+    // Recursive function to set all directory nodes to collapsed
+    const collapseAllNodes = (nodes) => {
+      for (const node of nodes) {
+        if (node.type === "directory") {
+          newExpandedNodes[node.id] = false;
+          if (node.children && Object.keys(node.children).length > 0) {
+            collapseAllNodes(Object.values(node.children));
+          }
+        }
+      }
+    };
+    
+    collapseAllNodes(fileTree);
+    setExpandedNodes(newExpandedNodes);
+    localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
   };
 
   return (
@@ -1513,7 +1649,57 @@ const App = () => {
                   )}
 
                   {activePage === "prompt" && (
-                    <PromptEngine />
+                    <PromptEngine 
+                      selectedFiles={(() => {
+                        console.log('App passing selectedFiles to PromptEngine, fileCounter:', fileCounter);
+                        
+                        // If fileCounter is 0, return an empty array
+                        if (fileCounter === 0) {
+                          console.log('No files selected according to fileCounter');
+                          return [];
+                        }
+                        
+                        // Get the files that are actually selected (counted in fileCounter)
+                        const actuallySelectedFiles = [];
+                        
+                        // Iterate through the file tree to find selected files
+                        const findSelectedFilesInTree = (nodes) => {
+                          for (const node of nodes) {
+                            if (node.type === "file" && selectedFiles.includes(node.path)) {
+                              if (node.fileData) {
+                                actuallySelectedFiles.push({
+                                  path: node.path,
+                                  content: node.fileData.content
+                                });
+                              }
+                            }
+                            if (node.children && Object.keys(node.children).length > 0) {
+                              findSelectedFilesInTree(Object.values(node.children));
+                            }
+                          }
+                        };
+                        
+                        // Find selected files in the tree
+                        findSelectedFilesInTree(buildFileTree());
+                        
+                        // If no files were found, try to use the selectedFiles array directly
+                        if (actuallySelectedFiles.length === 0 && fileCounter > 0) {
+                          console.log("No files found in tree, using selectedFiles directly");
+                          // Get selected files from allFiles
+                          return selectedFiles.map(path => {
+                            const file = allFiles.find(f => f.path === path);
+                            return {
+                              path,
+                              content: file ? file.content : null
+                            };
+                          }).filter(file => file.content !== null); // Only include files with content
+                        }
+                        
+                        console.log('Passing actuallySelectedFiles to PromptEngine:', actuallySelectedFiles);
+                        return actuallySelectedFiles;
+                      })()}
+                      projectRules={allFiles.find(f => f.path === '.rules')?.content || ''}
+                    />
                   )}
 
                   {activePage === "edit" && (

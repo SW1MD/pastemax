@@ -238,6 +238,8 @@ const ProjectConfig = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    console.log(`Config change: ${name} = ${type === 'checkbox' ? checked : value}`);
+    
     setConfig(prev => {
       const newConfig = {
         ...prev,
@@ -292,8 +294,26 @@ const ProjectConfig = () => {
       if (name === 'formatter' && value !== 'other') newConfig.customFormatter = '';
       if (name === 'stateManagement' && value !== 'other') newConfig.customStateManagement = '';
 
-      // Auto-save on change
-      handleSubmit();
+      // Auto-save the configuration immediately for language changes
+      if (name === 'projectType' || name === 'typescript') {
+        console.log('Auto-saving language change:', newConfig);
+        localStorage.setItem('project-config', JSON.stringify(newConfig));
+        
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new CustomEvent('project-config-updated', { 
+          detail: { config: newConfig }
+        }));
+      } else {
+        // For other changes, use the existing auto-save with timeout
+        setTimeout(() => {
+          localStorage.setItem('project-config', JSON.stringify(newConfig));
+          
+          // Dispatch custom event to notify other components
+          window.dispatchEvent(new CustomEvent('project-config-updated', { 
+            detail: { config: newConfig }
+          }));
+        }, 0);
+      }
 
       return newConfig;
     });
@@ -326,6 +346,11 @@ const ProjectConfig = () => {
     try {
       // Save to localStorage
       localStorage.setItem('project-config', JSON.stringify(config));
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('project-config-updated', { 
+        detail: { config }
+      }));
 
       // Create project configuration
       const projectConfig = {
