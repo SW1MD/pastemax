@@ -570,8 +570,8 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     }, 1000);
   };
   
-  // Paste content to the selected text area in the browser
-  const pasteToTextArea = () => {
+  // Paste content to the selected text area in the browser and optionally submit the form
+  const pasteToTextArea = (autoSubmit = false) => {
     // Get the appropriate prompt based on the active tab
     const contentToPaste = activeTab === 'user' 
       ? (userPromptTab === 'preview' ? promptPreview : userPrompt)
@@ -594,6 +594,205 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
       // Use the first webview found (we could make this more specific in the future)
       const webview = webviews[0];
       
+      // If autoSubmit is true, first let the user select the submit button
+      if (autoSubmit) {
+        webview.executeJavaScript(`
+          (function() {
+            // First check if we have a selected element
+            if (!window.pasteMaxSelectedElement) {
+              alert('No text area is selected. Please use the "Select text area" option first.');
+              return { success: false };
+            }
+            
+            // Create a highlight effect for buttons
+            const style = document.createElement('style');
+            style.id = 'pastemax-button-selector-style';
+            style.textContent = \`
+              .pastemax-button-highlight {
+                outline: 3px solid #4caf50 !important;
+                outline-offset: 2px !important;
+                cursor: pointer !important;
+                box-shadow: 0 0 10px rgba(76, 175, 80, 0.5) !important;
+                transition: all 0.2s ease !important;
+                position: relative !important;
+                z-index: 9999 !important;
+              }
+              .pastemax-button-highlight:hover {
+                outline-color: #388e3c !important;
+                box-shadow: 0 0 15px rgba(76, 175, 80, 0.7) !important;
+              }
+              .pastemax-button-tooltip {
+                position: fixed;
+                background-color: #333;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-size: 12px;
+                z-index: 999999;
+                pointer-events: none;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+              }
+            \`;
+            document.head.appendChild(style);
+            
+            // Create tooltip element
+            const tooltip = document.createElement('div');
+            tooltip.className = 'pastemax-button-tooltip';
+            tooltip.style.display = 'none';
+            document.body.appendChild(tooltip);
+            
+            // Create a floating message to show instructions
+            const instructions = document.createElement('div');
+            instructions.style.position = 'fixed';
+            instructions.style.top = '10px';
+            instructions.style.left = '50%';
+            instructions.style.transform = 'translateX(-50%)';
+            instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            instructions.style.color = 'white';
+            instructions.style.padding = '10px 15px';
+            instructions.style.borderRadius = '5px';
+            instructions.style.zIndex = '999999';
+            instructions.style.fontSize = '14px';
+            instructions.style.fontFamily = 'Arial, sans-serif';
+            instructions.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+            instructions.style.display = 'flex';
+            instructions.style.alignItems = 'center';
+            instructions.style.gap = '10px';
+            
+            const instructionsText = document.createElement('span');
+            instructionsText.textContent = 'Click on the submit/send button you want to use after pasting.';
+            
+            const cancelButton = document.createElement('button');
+            cancelButton.textContent = 'Cancel';
+            cancelButton.style.backgroundColor = '#555';
+            cancelButton.style.border = 'none';
+            cancelButton.style.color = 'white';
+            cancelButton.style.padding = '5px 10px';
+            cancelButton.style.borderRadius = '3px';
+            cancelButton.style.cursor = 'pointer';
+            cancelButton.style.marginLeft = '10px';
+            
+            instructions.appendChild(instructionsText);
+            instructions.appendChild(cancelButton);
+            document.body.appendChild(instructions);
+            
+            // Track if selection mode is active
+            let selectionModeActive = true;
+            let selectedButton = null;
+            
+            // Function to clean up all added elements and event listeners
+            function cleanup() {
+              // Remove styles and tooltips
+              const styleElement = document.getElementById('pastemax-button-selector-style');
+              if (styleElement) styleElement.remove();
+              
+              if (tooltip) tooltip.remove();
+              if (instructions) instructions.remove();
+              
+              // Remove highlight classes
+              document.querySelectorAll('.pastemax-button-highlight').forEach(el => {
+                el.classList.remove('pastemax-button-highlight');
+                el.removeEventListener('mouseover', handleMouseOver);
+                el.removeEventListener('mouseout', handleMouseOut);
+                el.removeEventListener('click', handleClick);
+              });
+              
+              document.removeEventListener('keydown', handleKeyDown);
+              
+              selectionModeActive = false;
+            }
+            
+            // Add event listener to cancel button
+            cancelButton.addEventListener('click', function() {
+              cleanup();
+              window.pasteMaxSelectedButton = null;
+            });
+            
+            // Handle escape key to exit selection mode
+            function handleKeyDown(e) {
+              if (e.key === 'Escape') {
+                cleanup();
+                window.pasteMaxSelectedButton = null;
+              }
+            }
+            
+            // Add event listener for escape key
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Handle mouse over event
+            function handleMouseOver(e) {
+              if (!selectionModeActive) return;
+              
+              const element = e.target;
+              
+              // Show tooltip
+              tooltip.textContent = 'Click to select this button';
+              tooltip.style.display = 'block';
+              tooltip.style.left = (e.pageX + 10) + 'px';
+              tooltip.style.top = (e.pageY + 10) + 'px';
+            }
+            
+            // Handle mouse out event
+            function handleMouseOut() {
+              if (!selectionModeActive) return;
+              tooltip.style.display = 'none';
+            }
+            
+            // Handle click event
+            function handleClick(e) {
+              if (!selectionModeActive) return;
+              
+              e.preventDefault();
+              e.stopPropagation();
+              
+              selectedButton = e.target;
+              window.pasteMaxSelectedButton = selectedButton;
+              
+              // Update instructions
+              instructionsText.textContent = 'Button selected! Ready to paste and submit.';
+              cancelButton.textContent = 'Done';
+              
+              // Clean up highlights but keep the instructions
+              document.querySelectorAll('.pastemax-button-highlight').forEach(el => {
+                if (el !== selectedButton) {
+                  el.classList.remove('pastemax-button-highlight');
+                }
+                el.removeEventListener('mouseover', handleMouseOver);
+                el.removeEventListener('mouseout', handleMouseOut);
+                el.removeEventListener('click', handleClick);
+              });
+              
+              tooltip.remove();
+              
+              return true;
+            }
+            
+            // Find all potential buttons
+            const potentialButtons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], a.button, .btn, [role="button"]'));
+            
+            // Add highlight class and event listeners to all elements
+            potentialButtons.forEach(button => {
+              button.classList.add('pastemax-button-highlight');
+              button.addEventListener('mouseover', handleMouseOver);
+              button.addEventListener('mouseout', handleMouseOut);
+              button.addEventListener('click', handleClick);
+            });
+            
+            return { success: true, selectionStarted: true };
+          })();
+        `).then(result => {
+          if (result && result.success && result.selectionStarted) {
+            console.log('Button selection mode started');
+          } else {
+            console.log('Failed to start button selection mode');
+          }
+        }).catch(err => {
+          console.error('Error starting button selection:', err);
+        });
+        
+        return;
+      }
+      
       // Execute script to check if an element is selected and paste content
       webview.executeJavaScript(`
         (function() {
@@ -606,37 +805,98 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
               // Focus the element
               element.focus();
               
-              // Paste content based on element type
+              // Store the current selection/cursor position
+              let selectionStart = 0;
+              let selectionEnd = 0;
+              
               if (element.tagName.toLowerCase() === 'textarea' || 
                  (element.tagName.toLowerCase() === 'input' && 
                   ['text', 'search', 'email', 'password', 'tel', 'url'].includes(element.type))) {
-                // For input and textarea elements, we can set the value directly
-                element.value = ${JSON.stringify(contentToPaste)};
+                
+                // Save current selection/cursor position
+                selectionStart = element.selectionStart;
+                selectionEnd = element.selectionEnd;
+                
+                // Get current value
+                const currentValue = element.value;
+                
+                // If there's a selection, replace it with the new content
+                if (selectionStart !== selectionEnd) {
+                  const newValue = currentValue.substring(0, selectionStart) + 
+                                  ${JSON.stringify(contentToPaste)} + 
+                                  currentValue.substring(selectionEnd);
+                  element.value = newValue;
+                  
+                  // Set cursor position after the inserted text
+                  const newPosition = selectionStart + ${JSON.stringify(contentToPaste)}.length;
+                  element.setSelectionRange(newPosition, newPosition);
+                } else {
+                  // If no selection, insert at cursor position
+                  const newValue = currentValue.substring(0, selectionStart) + 
+                                  ${JSON.stringify(contentToPaste)} + 
+                                  currentValue.substring(selectionStart);
+                  element.value = newValue;
+                  
+                  // Set cursor position after the inserted text
+                  const newPosition = selectionStart + ${JSON.stringify(contentToPaste)}.length;
+                  element.setSelectionRange(newPosition, newPosition);
+                }
                 
                 // Trigger input event to notify any listeners
                 const event = new Event('input', { bubbles: true });
                 element.dispatchEvent(event);
                 
-                return true;
+                // If we have a selected button, click it
+                if (window.pasteMaxSelectedButton && document.body.contains(window.pasteMaxSelectedButton)) {
+                  setTimeout(() => {
+                    window.pasteMaxSelectedButton.click();
+                  }, 100);
+                  return { success: true, submitted: true };
+                }
+                
+                return { success: true, submitted: false };
               } else if (element.isContentEditable) {
-                // For contenteditable elements
-                element.innerHTML = ${JSON.stringify(contentToPaste)};
+                // For contenteditable elements, we need to handle selection differently
+                const selection = window.getSelection();
+                const range = selection.getRangeAt(0);
+                
+                // Insert the content at the current selection
+                range.deleteContents();
+                const textNode = document.createTextNode(${JSON.stringify(contentToPaste)});
+                range.insertNode(textNode);
+                
+                // Move the cursor to the end of the inserted text
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
+                selection.removeAllRanges();
+                selection.addRange(range);
                 
                 // Trigger input event
                 const event = new Event('input', { bubbles: true });
                 element.dispatchEvent(event);
                 
-                return true;
+                // If we have a selected button, click it
+                if (window.pasteMaxSelectedButton && document.body.contains(window.pasteMaxSelectedButton)) {
+                  setTimeout(() => {
+                    window.pasteMaxSelectedButton.click();
+                  }, 100);
+                  return { success: true, submitted: true };
+                }
+                
+                return { success: true, submitted: false };
               }
             }
           }
           
           alert('No text area is selected. Please use the "Select text area" option first.');
-          return false;
+          return { success: false };
         })();
       `).then(result => {
-        if (result) {
+        if (result && result.success) {
           console.log('Content pasted successfully');
+          if (result.submitted === true) {
+            console.log('Form submitted successfully');
+          }
         } else {
           console.log('Failed to paste content');
         }
@@ -1106,7 +1366,7 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
             
             <button 
               className="prompt-action-btn"
-              onClick={pasteToTextArea}
+              onClick={() => pasteToTextArea(false)}
               disabled={loading}
               style={{
                 backgroundColor: 'var(--primary-color)',

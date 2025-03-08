@@ -223,6 +223,19 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
                 outline-color: #2a70c2 !important;
                 box-shadow: 0 0 15px rgba(74, 144, 226, 0.7) !important;
               }
+              .pastemax-button-highlight {
+                outline: 3px solid #4caf50 !important;
+                outline-offset: 2px !important;
+                cursor: pointer !important;
+                box-shadow: 0 0 10px rgba(76, 175, 80, 0.5) !important;
+                transition: all 0.2s ease !important;
+                position: relative !important;
+                z-index: 9999 !important;
+              }
+              .pastemax-button-highlight:hover {
+                outline-color: #388e3c !important;
+                box-shadow: 0 0 15px rgba(76, 175, 80, 0.7) !important;
+              }
               .pastemax-tooltip {
                 position: fixed;
                 background-color: #333;
@@ -246,6 +259,7 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
             // Track if selection mode is active
             let selectionModeActive = true;
             let selectedElement = null;
+            let selectionStage = 'text-area'; // Stages: 'text-area', 'submit-button'
             
             // Create a floating message to show instructions
             const instructions = document.createElement('div');
@@ -266,7 +280,7 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
             instructions.style.gap = '10px';
             
             const instructionsText = document.createElement('span');
-            instructionsText.textContent = 'Hover over a text area and click to select it. ';
+            instructionsText.textContent = 'Step 1: Hover over a text area and click to select it.';
             
             const cancelButton = document.createElement('button');
             cancelButton.textContent = 'Cancel';
@@ -278,12 +292,30 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
             cancelButton.style.cursor = 'pointer';
             cancelButton.style.marginLeft = '10px';
             
+            const skipButton = document.createElement('button');
+            skipButton.textContent = 'Skip Submit Button';
+            skipButton.style.backgroundColor = '#555';
+            skipButton.style.border = 'none';
+            skipButton.style.color = 'white';
+            skipButton.style.padding = '5px 10px';
+            skipButton.style.borderRadius = '3px';
+            skipButton.style.cursor = 'pointer';
+            skipButton.style.marginLeft = '10px';
+            skipButton.style.display = 'none'; // Initially hidden
+            
             instructions.appendChild(instructionsText);
+            instructions.appendChild(skipButton);
             instructions.appendChild(cancelButton);
             document.body.appendChild(instructions);
             
             // Add event listener to cancel button
             cancelButton.addEventListener('click', function() {
+              cleanup();
+            });
+            
+            // Add event listener to skip button
+            skipButton.addEventListener('click', function() {
+              // Skip the submit button selection
               cleanup();
             });
             
@@ -301,11 +333,22 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
                 item.element.classList.remove('pastemax-highlight');
               });
               
+              // Remove button highlights if any
+              document.querySelectorAll('.pastemax-button-highlight').forEach(el => {
+                el.classList.remove('pastemax-button-highlight');
+              });
+              
               // Remove event listeners
               allElements.forEach(item => {
-                item.element.removeEventListener('mouseover', handleMouseOver);
-                item.element.removeEventListener('mouseout', handleMouseOut);
-                item.element.removeEventListener('click', handleClick);
+                item.element.removeEventListener('mouseover', handleTextAreaMouseOver);
+                item.element.removeEventListener('mouseout', handleTextAreaMouseOut);
+                item.element.removeEventListener('click', handleTextAreaClick);
+              });
+              
+              document.querySelectorAll('button, input[type="submit"], input[type="button"], a.button, .btn, [role="button"]').forEach(button => {
+                button.removeEventListener('mouseover', handleButtonMouseOver);
+                button.removeEventListener('mouseout', handleButtonMouseOut);
+                button.removeEventListener('click', handleButtonClick);
               });
               
               document.removeEventListener('keydown', handleKeyDown);
@@ -323,9 +366,9 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
             // Add event listener for escape key
             document.addEventListener('keydown', handleKeyDown);
             
-            // Handle mouse over event
-            function handleMouseOver(e) {
-              if (!selectionModeActive) return;
+            // Handle mouse over event for text areas
+            function handleTextAreaMouseOver(e) {
+              if (!selectionModeActive || selectionStage !== 'text-area') return;
               
               const element = e.target;
               
@@ -339,15 +382,15 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
               tooltip.style.top = (e.pageY + 10) + 'px';
             }
             
-            // Handle mouse out event
-            function handleMouseOut() {
-              if (!selectionModeActive) return;
+            // Handle mouse out event for text areas
+            function handleTextAreaMouseOut() {
+              if (!selectionModeActive || selectionStage !== 'text-area') return;
               tooltip.style.display = 'none';
             }
             
-            // Handle click event
-            function handleClick(e) {
-              if (!selectionModeActive) return;
+            // Handle click event for text areas
+            function handleTextAreaClick(e) {
+              if (!selectionModeActive || selectionStage !== 'text-area') return;
               
               e.preventDefault();
               e.stopPropagation();
@@ -371,33 +414,92 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
               }
               
               selectedElement = element;
+              window.pasteMaxSelectedElement = element;
               
-              // Update instructions
-              instructionsText.textContent = 'Text area selected! You can now paste content.';
-              cancelButton.textContent = 'Done';
+              // Update instructions for next step
+              instructionsText.textContent = 'Step 2: Now click on the submit/send button you want to use (or skip).';
+              skipButton.style.display = 'inline-block'; // Show skip button
               
-              // Clean up highlights but keep the instructions
+              // Clean up text area highlights
               allElements.forEach(item => {
                 item.element.classList.remove('pastemax-highlight');
-                item.element.removeEventListener('mouseover', handleMouseOver);
-                item.element.removeEventListener('mouseout', handleMouseOut);
-                item.element.removeEventListener('click', handleClick);
+                item.element.removeEventListener('mouseover', handleTextAreaMouseOver);
+                item.element.removeEventListener('mouseout', handleTextAreaMouseOut);
+                item.element.removeEventListener('click', handleTextAreaClick);
               });
               
-              tooltip.remove();
+              // Move to next stage - highlight buttons
+              selectionStage = 'submit-button';
               
-              // Store the selected element in a global variable for later access
-              window.pasteMaxSelectedElement = element;
+              // Find all potential buttons
+              const potentialButtons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], a.button, .btn, [role="button"]'));
+              
+              // Add highlight class and event listeners to all buttons
+              potentialButtons.forEach(button => {
+                button.classList.add('pastemax-button-highlight');
+                button.addEventListener('mouseover', handleButtonMouseOver);
+                button.addEventListener('mouseout', handleButtonMouseOut);
+                button.addEventListener('click', handleButtonClick);
+              });
               
               return true;
             }
             
-            // Add highlight class and event listeners to all elements
+            // Handle mouse over event for buttons
+            function handleButtonMouseOver(e) {
+              if (!selectionModeActive || selectionStage !== 'submit-button') return;
+              
+              const element = e.target;
+              
+              // Show tooltip
+              tooltip.textContent = 'Click to select this button';
+              tooltip.style.display = 'block';
+              tooltip.style.left = (e.pageX + 10) + 'px';
+              tooltip.style.top = (e.pageY + 10) + 'px';
+            }
+            
+            // Handle mouse out event for buttons
+            function handleButtonMouseOut() {
+              if (!selectionModeActive || selectionStage !== 'submit-button') return;
+              tooltip.style.display = 'none';
+            }
+            
+            // Handle click event for buttons
+            function handleButtonClick(e) {
+              if (!selectionModeActive || selectionStage !== 'submit-button') return;
+              
+              e.preventDefault();
+              e.stopPropagation();
+              
+              const button = e.target;
+              window.pasteMaxSelectedButton = button;
+              
+              // Update instructions
+              instructionsText.textContent = 'Setup complete! You can now paste content and submit.';
+              cancelButton.textContent = 'Done';
+              skipButton.style.display = 'none';
+              
+              // Clean up button highlights except the selected one
+              document.querySelectorAll('.pastemax-button-highlight').forEach(el => {
+                if (el !== button) {
+                  el.classList.remove('pastemax-button-highlight');
+                }
+                el.removeEventListener('mouseover', handleButtonMouseOver);
+                el.removeEventListener('mouseout', handleButtonMouseOut);
+                el.removeEventListener('click', handleButtonClick);
+              });
+              
+              tooltip.remove();
+              
+              return true;
+            }
+            
+            // Add highlight class and event listeners to all text area elements
             allElements.forEach(item => {
               item.element.classList.add('pastemax-highlight');
-              item.element.addEventListener('mouseover', handleMouseOver);
-              item.element.addEventListener('mouseout', handleMouseOut);
-              item.element.addEventListener('click', handleClick);
+              item.element.addEventListener('mouseover', handleTextAreaMouseOver);
+              item.element.addEventListener('mouseout', handleTextAreaMouseOut);
+              item.element.addEventListener('click', handleTextAreaClick);
             });
             
             return true;
