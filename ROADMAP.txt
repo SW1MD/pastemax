@@ -1,0 +1,16 @@
+COSMETIC:
+
+SELECT + EDIT Headers
+PROMPT Section needs to be raised
+File Browser Tree needs to be right under toolbar
+Settings needs a layout adjustment
+Sidebar needs icons Bigger and lower (maybw a better open close btn)
+
+FUNCTIONAL:
+Automation Settings
+Auto copy paste
+Copilot
+Play Button/Terminal
+FIX SELECTION ISSUES
+
+

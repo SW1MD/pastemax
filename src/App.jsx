@@ -103,7 +103,7 @@ const App = () => {
       try {
         setExpandedNodes(JSON.parse(savedExpandedNodes));
       } catch (error) {
-        console.error("Error parsing saved expanded nodes:", error);
+        // Removed console.error
       }
     }
   }, []);
@@ -143,7 +143,7 @@ const App = () => {
     const hasLoadedInitialData = sessionStorage.getItem("hasLoadedInitialData");
     if (hasLoadedInitialData === "true") return;
 
-    console.log("Loading saved folder on startup:", selectedFolder);
+    // Removed console.log
     setProcessingStatus({
       status: "processing",
       message: "Loading files from previously selected folder..."
@@ -161,7 +161,7 @@ const App = () => {
     // Set up event listeners
     window.electron.receive('file-created', (result) => {
       if (result.success) {
-        console.log("File created successfully:", result.file);
+        // Removed console.log
         
         // Add the new file to allFiles
         setAllFiles(prevFiles => [...prevFiles, result.file]);
@@ -174,7 +174,7 @@ const App = () => {
         // Refresh the file list to update the tree
         window.electron.send("request-file-list", selectedFolder);
       } else {
-        console.error("Error creating file:", result.error);
+        // Removed console.error
         setProcessingStatus({
           status: "error",
           message: "Error creating file: " + result.error
@@ -184,7 +184,7 @@ const App = () => {
 
     window.electron.receive('folder-created', (result) => {
       if (result.success) {
-        console.log("Folder created successfully:", result.path);
+        // Removed console.log
         
         // Add to recent folders
         const updatedRecentFolders = [result.path, ...recentFolders.filter(f => f !== result.path)].slice(0, 10);
@@ -209,7 +209,7 @@ const App = () => {
         // Refresh the file list to update the tree
         window.electron.send("request-file-list", selectedFolder);
       } else {
-        console.error("Error creating folder:", result.error);
+        // Removed console.error
         setProcessingStatus({
           status: "error",
           message: "Error creating folder: " + result.error
@@ -220,7 +220,7 @@ const App = () => {
     // Set up file list and folder selection listeners
     window.electron.receive("folder-selected", (folderPath) => {
       if (typeof folderPath === "string") {
-        console.log("Folder selected:", folderPath);
+        // Removed console.log
         setSelectedFolder(folderPath);
         setSelectedFiles([]);
         setProcessingStatus({
@@ -229,7 +229,7 @@ const App = () => {
         });
         window.electron.send("request-file-list", folderPath);
       } else {
-        console.error("Invalid folder path received:", folderPath);
+        // Removed console.error
         setProcessingStatus({
           status: "error",
           message: "Invalid folder path received"
@@ -238,7 +238,7 @@ const App = () => {
     });
 
     window.electron.receive("file-list-data", (files) => {
-      console.log("Received file list data:", files.length, "files");
+      // Removed console.log
       setAllFiles(files);
       setProcessingStatus({
         status: "complete",
@@ -260,20 +260,22 @@ const App = () => {
     });
 
     window.electron.receive("file-processing-status", (status) => {
-      console.log("Processing status:", status);
+      // Removed console.log
       setProcessingStatus(status);
     });
 
     window.electron.receive("file-saved", (result) => {
       if (result.success) {
-        console.log("File saved successfully:", result.path);
-        // Refresh the file list to get updated token counts and content
-        window.electron.send("request-file-list", selectedFolder);
+        // Removed console.log
+        setProcessingStatus({
+          status: "complete",
+          message: `File saved: ${result.path.split('/').pop()}`
+        });
       } else {
-        console.error("Error saving file:", result.error);
+        // Removed console.error
         setProcessingStatus({
           status: "error",
-          message: "Error saving file: " + result.error
+          message: `Error saving file: ${result.error}`
         });
       }
     });
@@ -281,12 +283,16 @@ const App = () => {
   }, [isElectron, selectedFolder, expandedNodes, sortOrder, searchTerm]);
 
   const openFolder = () => {
+    // Removed console.log
+    
     if (isElectron) {
-      console.log("Opening folder dialog");
-      setProcessingStatus({ status: "idle", message: "Select a folder..." });
-      window.electron.ipcRenderer.send("open-folder");
+      window.electron.send("open-folder");
     } else {
-      console.warn("Folder selection not available in browser");
+      // Removed console.warn
+      setProcessingStatus({
+        status: "error",
+        message: "Folder selection is only available in the desktop app"
+      });
     }
   };
 
@@ -536,16 +542,16 @@ const App = () => {
     }
   }, [isResizing]);
   
-  // Load saved panel sizes on initial render
+  // Load saved panel sizes
   useEffect(() => {
-    const savedSizes = localStorage.getItem('pastemax-panel-sizes');
-    if (savedSizes) {
-      try {
-        const parsedSizes = JSON.parse(savedSizes);
+    try {
+      const savedPanelSizes = localStorage.getItem('pastemax-panel-sizes');
+      if (savedPanelSizes) {
+        const parsedSizes = JSON.parse(savedPanelSizes);
         pasteSizeRef.current = parsedSizes.pastemax;
-      } catch (e) {
-        console.error('Error parsing saved panel sizes', e);
       }
+    } catch (e) {
+      // Removed console.error
     }
   }, []);
 
@@ -619,10 +625,6 @@ const App = () => {
 
   // Build file tree structure from flat list of files
   const buildFileTree = () => {
-    if (allFiles.length === 0 || !selectedFolder) {
-      return [];
-    }
-
     try {
       // Create a structured representation using nested objects first
       const fileMap = {};
@@ -761,8 +763,8 @@ const App = () => {
         return a.name.localeCompare(b.name);
       });
     } catch (err) {
-      console.error("Error building file tree:", err);
-      return [];
+      // Removed console.error
+      return { children: [] };
     }
   };
 
@@ -906,15 +908,34 @@ const App = () => {
       let fileContent = "";
       if (isElectron) {
         try {
-          const result = await window.electron.ipcRenderer.invoke("read-file", filePath);
+          const result = await window.electron.invoke("read-file", filePath);
           if (result.success) {
             fileContent = result.content;
           } else {
-            console.error("Error reading file:", result.error);
+            // Removed console.error
+            setProcessingStatus({
+              status: "error",
+              message: `Error reading file: ${result.error || "Unknown error"}`
+            });
             return;
           }
+        } catch (result) {
+          // Removed console.error
+          setProcessingStatus({
+            status: "error",
+            message: `Error reading file: ${result.error || "Unknown error"}`
+          });
+          return;
+        }
+      } else {
+        try {
+          // ... existing code ...
         } catch (err) {
-          console.error("Error invoking read-file:", err);
+          // Removed console.error
+          setProcessingStatus({
+            status: "error",
+            message: `Error reading file: ${err.message || "Unknown error"}`
+          });
           return;
         }
       }
@@ -944,7 +965,11 @@ const App = () => {
       setFileHistory([filePath, ...fileHistory].slice(0, 20));
       
     } catch (error) {
-      console.error("Error opening file:", error);
+      // Removed console.error
+      setProcessingStatus({
+        status: "error",
+        message: `Error opening file: ${error.message}`
+      });
       setIsLoading(false);
     }
   };
@@ -999,97 +1024,65 @@ const App = () => {
 
   // Function to save file changes
   const saveFile = async (content) => {
-    if (!currentFile) return;
-    
+    if (!viewedFile) {
+      setProcessingStatus({
+        status: "error",
+        message: "No file is currently open for editing"
+      });
+      return;
+    }
+
     try {
+      setProcessingStatus({
+        status: "processing",
+        message: `Saving file: ${viewedFile.name}`
+      });
+      
       // Save the file using the electron API
-      const result = await window.electron.writeFile(currentFile, content);
+      const result = await window.electron.writeFile(viewedFile.path, content);
       
       if (result && result.success) {
         try {
           // Refresh the file to get the latest content and token count
-          const refreshedFile = await window.electron.refreshFile(currentFile);
+          const refreshedFile = await window.electron.refreshFile(viewedFile.path);
           
           if (refreshedFile) {
             // Update the file in allFiles array
             setAllFiles(prevFiles => 
               prevFiles.map(file => 
-                file.path === currentFile ? refreshedFile : file
+                file.path === viewedFile.path ? refreshedFile : file
               )
             );
-            
-            // Update the current file content in editor state
-            setFileContent(refreshedFile.content);
           }
         } catch (refreshError) {
-          console.error('Error refreshing file:', refreshError);
-          // Even if refresh fails, we still update with what we have
-          setAllFiles(prevFiles => {
-            return prevFiles.map(file => 
-              file.path === currentFile ? { ...file, content } : file
-            );
-          });
-          setFileContent(content);
+          // Removed console.error
         }
+        
+        setProcessingStatus({
+          status: "complete",
+          message: `File saved: ${viewedFile.name}`
+        });
         
         return true;
       } else {
-        console.error('Error saving file: Unknown error');
+        setProcessingStatus({
+          status: "error",
+          message: "Error saving file: Unknown error"
+        });
         return false;
       }
     } catch (error) {
-      console.error('Error saving file:', error);
+      setProcessingStatus({
+        status: "error",
+        message: `Error saving file: ${error.message || "Unknown error"}`
+      });
       return false;
     }
   };
 
-  // Load recent files and folders on component mount
-  useEffect(() => {
-    const savedRecentFiles = localStorage.getItem('pastemax-recent-files');
-    const savedRecentFolders = localStorage.getItem('pastemax-recent-folders');
-    
-    if (savedRecentFiles) {
-      try {
-        setRecentFiles(JSON.parse(savedRecentFiles));
-      } catch (e) {
-        console.error('Error parsing saved recent files:', e);
-      }
-    }
-    
-    if (savedRecentFolders) {
-      try {
-        setRecentFolders(JSON.parse(savedRecentFolders));
-      } catch (e) {
-        console.error('Error parsing saved recent folders:', e);
-      }
-    }
-  }, []);
+  const [currentDirectory, setCurrentDirectory] = useState("");
 
-  // Define the handleFileCreationWithContent function
-  const handleFileCreationWithContent = (directory, fileName, content = '') => {
-    const fullPath = directory ? `${directory}/${fileName}` : fileName;
-    
-    if (isElectron) {
-      window.electron.send("create-file", {
-        folderPath: directory || selectedFolder,
-        fileName: fileName,
-        content: content
-      });
-      
-      // If content was provided, prepare to open the file for editing
-      if (content) {
-        setCurrentFile(fullPath);
-        setFileContent(content);
-        setIsEditing(true);
-      }
-    }
-  };
-
-  // Get folder icon based on expanded state
-
-  // Get file icon based on extension
-
-  // Handle folder creation
+  // Fix the syntax error in the handleCreateFolder function
   const handleCreateFolder = (directory, folderName) => {
     if (isElectron) {
       const targetDirectory = directory || selectedFolder;
@@ -1122,7 +1115,28 @@ const App = () => {
     }
   };
 
-  const [currentDirectory, setCurrentDirectory] = useState("");
+  // Define the handleFileCreationWithContent function
+  const handleFileCreationWithContent = (directory, fileName, content = '') => {
+    const fullPath = directory ? `${directory}/${fileName}` : fileName;
+    
+    if (isElectron) {
+      window.electron.send("create-file", {
+        folderPath: directory || selectedFolder,
+        fileName: fileName,
+        content: content
+      });
+      
+      // If content was provided, prepare to open the file for editing
+      if (content) {
+        setViewedFile({
+          path: fullPath,
+          name: fileName
+        });
+        setFileContent(content);
+        setIsEditing(true);
+      }
+    }
+  };
 
   return (
     <div className="app-container">
@@ -1285,7 +1299,40 @@ const App = () => {
                   )}
 
                   {activePage === "project" && (
-                    <ProjectConfig />
+                    <ProjectConfig 
+                      selectedFolder={selectedFolder}
+                      onClose={() => setActivePage("select")}
+                    />
+                  )}
+
+                  {activePage === "terminal" && (
+                    <div className="placeholder-message" style={{ 
+                      padding: '2rem', 
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%'
+                    }}>
+                      <h3>Terminal functionality has been removed</h3>
+                      <p>The terminal feature has been disabled for security reasons.</p>
+                      <button 
+                        className="btn" 
+                        style={{ 
+                          marginTop: '1rem',
+                          padding: '0.5rem 1rem',
+                          background: 'var(--primary-color)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }} 
+                        onClick={() => setActivePage("select")}
+                      >
+                        Go Back
+                      </button>
+                    </div>
                   )}
 
                   {activePage === "settings" && (

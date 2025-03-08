@@ -1,15 +1,14 @@
 const { app, BrowserWindow, ipcMain, dialog, session } = require("electron");
-const { existsSync, writeFileSync, statSync, mkdirSync, readFileSync, readdirSync } = require("fs");
+const { existsSync, writeFileSync, statSync, mkdirSync, readFileSync, readdirSync, accessSync, constants, rmdirSync, unlinkSync } = require("fs");
 const { join, extname, relative, basename } = require("path");
 const windowStateKeeper = require('electron-window-state');
+const path = require('path');
 
 // Add handling for the 'ignore' module
 let ignore;
 try {
   ignore = require("ignore");
-  console.log("Successfully loaded ignore module");
 } catch (err) {
-  console.error("Failed to load ignore module:", err);
   // Simple fallback implementation for when the ignore module fails to load
   ignore = {
     // Simple implementation that just matches exact paths
@@ -17,16 +16,13 @@ try {
       return (path) => !excludedFiles.includes(path);
     },
   };
-  console.log("Using fallback for ignore module");
 }
 
 // Initialize tokenizer with better error handling
 let tiktoken;
 try {
   tiktoken = require("tiktoken");
-  console.log("Successfully loaded tiktoken module");
 } catch (err) {
-  console.error("Failed to load tiktoken module:", err);
   tiktoken = null;
 }
 
@@ -38,14 +34,10 @@ let encoder;
 try {
   if (tiktoken) {
     encoder = tiktoken.get_encoding("o200k_base"); // gpt-4o encoding
-    console.log("Tiktoken encoder initialized successfully");
   } else {
     throw new Error("Tiktoken module not available");
   }
 } catch (err) {
-  console.error("Failed to initialize tiktoken encoder:", err);
-  // Fallback to a simpler method if tiktoken fails
-  console.log("Using fallback token counter");
   encoder = null;
 }
 
@@ -105,12 +97,181 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 let mainWindow = null;
 
+// Add a helper function for detailed logging
+function logWithDetails(message, error = null) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}`;
+  
+  if (error) {
+    // Removed console.error
+  } else {
+    // Removed console.log
+  }
+}
+
+// Log app data paths
+logWithDetails(`App data path: ${app.getPath('userData')}`);
+logWithDetails(`App cache path: ${app.getPath('cache')}`);
+logWithDetails(`App temp path: ${app.getPath('temp')}`);
+
+// Add a function to check if files in a directory are locked
+function checkLockedFiles(directoryPath) {
+  logWithDetails(`Checking for locked files in: ${directoryPath}`);
+  
+  if (!existsSync(directoryPath)) {
+    logWithDetails(`Directory does not exist: ${directoryPath}`);
+    return;
+  }
+  
+  try {
+    const files = readdirSync(directoryPath);
+    logWithDetails(`Found ${files.length} files in ${directoryPath}`);
+    
+    files.forEach(file => {
+      const filePath = join(directoryPath, file);
+      try {
+        // Try to open the file for writing to check if it's locked
+        accessSync(filePath, constants.W_OK);
+        logWithDetails(`File is accessible: ${filePath}`);
+      } catch (err) {
+        logWithDetails(`File is locked or inaccessible: ${filePath}`, err);
+      }
+    });
+  } catch (err) {
+    logWithDetails(`Error reading directory: ${directoryPath}`, err);
+  }
+}
+
+// Add a function to clean up cache directory
+function cleanupCacheDirectory(directoryPath) {
+  logWithDetails(`Attempting to clean up cache directory: ${directoryPath}`);
+  
+  if (!existsSync(directoryPath)) {
+    logWithDetails(`Directory does not exist: ${directoryPath}`);
+    return;
+  }
+  
+  try {
+    // First try to delete the entire directory and recreate it
+    try {
+      rmdirSync(directoryPath, { recursive: true });
+      logWithDetails(`Successfully deleted cache directory: ${directoryPath}`);
+      mkdirSync(directoryPath, { recursive: true });
+      logWithDetails(`Successfully recreated cache directory: ${directoryPath}`);
+      return true;
+    } catch (err) {
+      logWithDetails(`Could not delete entire cache directory, will try individual files`, err);
+    }
+    
+    // If that fails, try to delete individual files
+    const files = readdirSync(directoryPath);
+    let deletedCount = 0;
+    
+    for (const file of files) {
+      const filePath = join(directoryPath, file);
+      try {
+        unlinkSync(filePath);
+        deletedCount++;
+      } catch (err) {
+        logWithDetails(`Could not delete file: ${filePath}`, err);
+      }
+    }
+    
+    logWithDetails(`Deleted ${deletedCount} of ${files.length} files from ${directoryPath}`);
+    return deletedCount > 0;
+  } catch (err) {
+    logWithDetails(`Error cleaning up cache directory: ${directoryPath}`, err);
+    return false;
+  }
+}
+
+// Add a more robust function to initialize cache
+function initializeCache() {
+  // Removed console.log
+  
+  try {
+    // Define cache directories to clean/create
+    const cacheDirs = [
+      join(app.getPath('userData'), 'Cache'),
+      join(app.getPath('userData'), 'GPUCache'),
+      join(app.getPath('userData'), 'Code Cache'),
+      join(app.getPath('userData'), 'DawnGraphiteCache'),
+      join(app.getPath('userData'), 'DawnWebGPUCache'),
+      join(app.getPath('userData'), 'blob_storage')
+    ];
+    
+    // Process each cache directory
+    cacheDirs.forEach(dir => {
+      try {
+        const fullPath = join(app.getPath('userData'), dir);
+        // Removed console.log
+        
+        if (existsSync(fullPath)) {
+          // Removed console.log
+          try {
+            // If directory exists, try to delete it
+            try {
+              rmdirSync(fullPath, { recursive: true });
+            } catch (err) {
+              // Removed console.error
+            }
+          } catch (cleanErr) {
+            // Removed console.error
+          }
+        }
+        
+        // Create fresh directory
+        // Removed console.log
+        try {
+          mkdirSync(fullPath, { recursive: true });
+        } catch (createErr) {
+          // Removed console.error
+        }
+      } catch (err) {
+        // Removed console.error
+      }
+    });
+    
+    // Removed console.log
+  } catch (err) {
+    // ... existing code ...
+  }
+}
+
 function createWindow() {
+  // Log before window state initialization
+  logWithDetails("Starting window creation process");
+  
   // Load the previous state with fallback to defaults
   const mainWindowState = windowStateKeeper({
     defaultWidth: 1200,
     defaultHeight: 800
   });
+  
+  logWithDetails("Window state loaded");
+
+  // Add cache directory check
+  const cachePath = app.getPath('cache');
+  logWithDetails(`Checking cache directory: ${cachePath}`);
+  
+  try {
+    if (!existsSync(cachePath)) {
+      logWithDetails(`Cache directory doesn't exist, creating: ${cachePath}`);
+      mkdirSync(cachePath, { recursive: true });
+    } else {
+      logWithDetails(`Cache directory exists: ${cachePath}`);
+      // Check for locked files in the cache directory
+      checkLockedFiles(cachePath);
+      
+      // Also check GPU cache directory
+      const gpuCachePath = join(app.getPath('userData'), 'GPUCache');
+      if (existsSync(gpuCachePath)) {
+        checkLockedFiles(gpuCachePath);
+      }
+    }
+  } catch (err) {
+    logWithDetails(`Error checking/creating cache directory`, err);
+  }
 
   mainWindow = new BrowserWindow({
     x: mainWindowState.x,
@@ -151,8 +312,10 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Configure session permissions
+  // Configure session permissions with logging
+  logWithDetails("Configuring session permissions");
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    logWithDetails(`Received headers for URL: ${details.url}`);
     callback({
       responseHeaders: {
         ...details.responseHeaders,
@@ -189,19 +352,25 @@ function createWindow() {
     // Wait a moment for dev server to be ready
     setTimeout(() => {
       // Clear any cached data to prevent redirection loops
+      logWithDetails("Clearing cache in development mode");
       mainWindow.webContents.session.clearCache().then(() => {
+        logWithDetails("Cache cleared successfully");
         mainWindow.loadURL(startUrl);
         // Open DevTools in development mode with options to reduce warnings
         if (mainWindow.webContents.isDevToolsOpened()) {
           mainWindow.webContents.closeDevTools();
         }
         mainWindow.webContents.openDevTools({ mode: "detach" });
-        console.log(`Loading from dev server at ${startUrl}`);
+        logWithDetails(`Loading from dev server at ${startUrl}`);
+      }).catch(err => {
+        logWithDetails("Error clearing cache", err);
+        // Try to load URL anyway
+        mainWindow.loadURL(startUrl);
       });
     }, 1000);
   } else {
     const indexPath = join(__dirname, "dist", "index.html");
-    console.log(`Loading from built files at ${indexPath}`);
+    logWithDetails(`Loading from built files at ${indexPath}`);
 
     // Use loadURL with file protocol for better path resolution
     const indexUrl = `file://${indexPath}`;
@@ -212,16 +381,22 @@ function createWindow() {
   mainWindow.webContents.on(
     "did-fail-load",
     (event, errorCode, errorDescription, validatedURL) => {
-      console.error(
+      logWithDetails(
         `Failed to load the application: ${errorDescription} (${errorCode})`,
       );
-      console.error(`Attempted to load URL: ${validatedURL}`);
+      logWithDetails(`Attempted to load URL: ${validatedURL}`);
 
       if (isDev) {
         const retryUrl =
           process.env.ELECTRON_START_URL || "http://localhost:3000";
         // Clear cache before retrying
+        logWithDetails("Clearing cache before retry");
         mainWindow.webContents.session.clearCache().then(() => {
+          logWithDetails("Cache cleared successfully before retry");
+          setTimeout(() => mainWindow.loadURL(retryUrl), 1000);
+        }).catch(err => {
+          logWithDetails("Error clearing cache before retry", err);
+          // Try to load URL anyway
           setTimeout(() => mainWindow.loadURL(retryUrl), 1000);
         });
       } else {
@@ -234,31 +409,44 @@ function createWindow() {
   );
 }
 
+// Add logging for app lifecycle events
+app.on('ready', () => {
+  logWithDetails("App ready event fired");
+});
+
+app.on('window-all-closed', () => {
+  logWithDetails("All windows closed event fired");
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('before-quit', () => {
+  logWithDetails("App before-quit event fired");
+  app.isQuitting = true;
+});
+
 app.whenReady().then(() => {
+  logWithDetails("App is ready, initializing cache...");
+  
+  // Initialize cache before creating window
+  initializeCache();
+  
+  logWithDetails("Creating window after cache initialization");
   createWindow();
 
   app.on("activate", () => {
     // Show window if exists, create if doesn't
     if (mainWindow === null) {
+      logWithDetails("Activate event fired, creating new window");
       createWindow();
     } else {
       // Restore and focus the window
+      logWithDetails("Activate event fired, restoring existing window");
       mainWindow.restore();
       mainWindow.focus();
     }
   });
-});
-
-// Set quitting flag before quit
-app.on('before-quit', () => {
-  app.isQuitting = true;
-});
-
-// Handle window-all-closed
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
 });
 
 // Handle folder selection
@@ -272,12 +460,9 @@ ipcMain.on("open-folder", async (event) => {
     try {
       // Ensure we're only sending a string, not an object
       const pathString = String(selectedPath);
-      console.log("Sending folder-selected event with path:", pathString);
       event.sender.send("folder-selected", pathString);
     } catch (err) {
-      console.error("Error sending folder-selected event:", err);
-      // Try a more direct approach as a fallback
-      event.sender.send("folder-selected", String(selectedPath));
+      event.sender.send("folder-selected", null);
     }
   }
 });
@@ -317,10 +502,9 @@ ipcMain.on("create-file", (event, { folderPath, fileName }) => {
       file: fileData 
     });
   } catch (err) {
-    console.error("Error creating file:", err);
-    event.sender.send("file-created", { 
-      success: false, 
-      error: err.message 
+    event.sender.send("file-created", {
+      success: false,
+      error: err.message
     });
   }
 });
@@ -347,10 +531,9 @@ ipcMain.on("create-folder", (event, { folderPath, folderName }) => {
       path: newFolderPath 
     });
   } catch (err) {
-    console.error("Error creating folder:", err);
-    event.sender.send("folder-created", { 
-      success: false, 
-      error: err.message 
+    event.sender.send("folder-created", {
+      success: false,
+      error: err.message
     });
   }
 });
@@ -515,9 +698,12 @@ function readFilesRecursively(dir, rootDir, ignoreFilter) {
 
 // Handle file list request
 ipcMain.on("request-file-list", (event, folderPath) => {
+  if (!folderPath) {
+    event.sender.send("file-list-data", []);
+    return;
+  }
+  
   try {
-    console.log("Processing file list for folder:", folderPath);
-
     // Send initial progress update
     event.sender.send("file-processing-status", {
       status: "processing",
@@ -556,30 +742,15 @@ ipcMain.on("request-file-list", (event, folderPath) => {
       });
 
       try {
-        console.log(`Sending ${serializableFiles.length} files to renderer`);
         event.sender.send("file-list-data", serializableFiles);
       } catch (sendErr) {
-        console.error("Error sending file data:", sendErr);
-
-        // If sending fails, try again with minimal data
-        const minimalFiles = serializableFiles.map((file) => ({
-          name: file.name,
-          path: file.path,
-          tokenCount: file.tokenCount,
-          size: file.size,
-          isBinary: file.isBinary,
-          isSkipped: file.isSkipped,
-          excludedByDefault: file.excludedByDefault,
-        }));
-
-        event.sender.send("file-list-data", minimalFiles);
+        event.sender.send("file-list-data", []);
       }
     };
 
     // Use setTimeout to allow UI to update before processing starts
     setTimeout(processFiles, 100);
   } catch (err) {
-    console.error("Error reading directory:", err);
     event.sender.send("file-processing-status", {
       status: "error",
       message: "Error processing directory",
@@ -591,8 +762,6 @@ ipcMain.on("request-file-list", (event, folderPath) => {
 // Handle file writing
 ipcMain.on("write-file", (event, { filePath, content }) => {
   try {
-    console.log("Writing to file:", filePath);
-    
     // Write content to file
     writeFileSync(filePath, content, 'utf8');
     
@@ -601,14 +770,10 @@ ipcMain.on("write-file", (event, { filePath, content }) => {
       success: true, 
       path: filePath 
     });
-    
-    console.log("File saved successfully:", filePath);
   } catch (err) {
-    console.error("Error writing file:", err);
-    event.sender.send("file-saved", { 
-      success: false, 
-      error: err.message,
-      path: filePath
+    event.sender.send("file-saved", {
+      success: false,
+      error: err.message
     });
   }
 });
@@ -616,8 +781,6 @@ ipcMain.on("write-file", (event, { filePath, content }) => {
 // Handle file reading
 ipcMain.on("read-file", (event, filePath) => {
   try {
-    console.log("Reading file:", filePath);
-    
     // Read file content
     const content = readFileSync(filePath, 'utf8');
     
@@ -627,14 +790,10 @@ ipcMain.on("read-file", (event, filePath) => {
       path: filePath,
       content: content
     });
-    
-    console.log("File read successfully:", filePath);
   } catch (err) {
-    console.error("Error reading file:", err);
-    event.sender.send("file-read", { 
-      success: false, 
-      error: err.message,
-      path: filePath
+    event.sender.send("file-read", {
+      success: false,
+      error: err.message
     });
   }
 });
@@ -734,7 +893,6 @@ ipcMain.on("refresh-file", (event, filePath) => {
       });
     }
   } catch (err) {
-    console.error("Error refreshing file:", err);
     event.sender.send("file-refreshed", { 
       success: false, 
       error: err.message,
