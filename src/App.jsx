@@ -7,6 +7,7 @@ import WebBrowser from "./components/WebBrowser";
 import PromptEngine from './components/PromptEngine';
 import EditorPage from './components/EditorPage';
 import FileManager from './components/FileManager';
+import ProjectConfig from './components/ProjectConfig';
 import './styles/settings.css';
 
 // Keys for localStorage
@@ -1176,36 +1177,38 @@ const App = () => {
               setActivePage={setActivePage}
             />
             <div className="content-area">
-              <div className="content-header">
+              <div className={`content-header ${activePage === "project" ? 'project-page' : ''}`}>
                 <div className="content-title">
-                  <div className="view-dropdown">
-                    <div 
-                      className="view-dropdown-button"
-                      onClick={toggleViewDropdown}
-                    >
-                      {viewMode === "selected-files" ? "Selected Files" : "File Browser"}
-                    </div>
-                    {viewDropdownOpen && (
-                      <div className="view-dropdown-menu">
-                        <div 
-                          className={`view-dropdown-item ${viewMode === "selected-files" ? "active" : ""}`}
-                          onClick={() => toggleViewMode("selected-files")}
-                        >
-                          Selected Files
-                        </div>
-                        <div 
-                          className={`view-dropdown-item ${viewMode === "file-browser" ? "active" : ""}`}
-                          onClick={() => toggleViewMode("file-browser")}
-                        >
-                          File Browser
-                        </div>
+                  {activePage === "select" && (
+                    <div className="view-dropdown">
+                      <div 
+                        className="view-dropdown-button"
+                        onClick={toggleViewDropdown}
+                      >
+                        {viewMode === "selected-files" ? "Selected Files" : "File Browser"}
                       </div>
-                    )}
-                  </div>
+                      {viewDropdownOpen && (
+                        <div className="view-dropdown-menu">
+                          <div 
+                            className={`view-dropdown-item ${viewMode === "selected-files" ? "active" : ""}`}
+                            onClick={() => toggleViewMode("selected-files")}
+                          >
+                            Selected Files
+                          </div>
+                          <div 
+                            className={`view-dropdown-item ${viewMode === "file-browser" ? "active" : ""}`}
+                            onClick={() => toggleViewMode("file-browser")}
+                          >
+                            File Browser
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Token warning notification */}
-                {showTokenWarning && (
+                {showTokenWarning && activePage !== "project" && (
                   <div className={`token-warning ${calculateTotalTokens() > tokenWarningLimit ? 'exceeded' : 'near'}`}>
                     <div className="token-warning-icon">⚠️</div>
                     <div className="token-warning-message">
@@ -1219,8 +1222,7 @@ const App = () => {
                 
                 <div className="content-actions">
                   <div className="file-stats">
-                    {selectedFiles.length} files | ~
-                    {calculateTotalTokens().toLocaleString()} tokens
+                    {selectedFiles.length} files | ~{calculateTotalTokens().toLocaleString()} tokens
                   </div>
                 </div>
               </div>
@@ -1280,6 +1282,10 @@ const App = () => {
                         recentFolders={recentFolders}
                       />
                     </div>
+                  )}
+
+                  {activePage === "project" && (
+                    <ProjectConfig />
                   )}
 
                   {activePage === "settings" && (

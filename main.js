@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, dialog, session } from "electron";
-import { existsSync, writeFileSync, statSync, mkdirSync, readFileSync, readdirSync } from "fs";
-import { join, extname, relative, basename } from "path";
-import windowStateKeeper from 'electron-window-state';
+const { app, BrowserWindow, ipcMain, dialog, session } = require("electron");
+const { existsSync, writeFileSync, statSync, mkdirSync, readFileSync, readdirSync } = require("fs");
+const { join, extname, relative, basename } = require("path");
+const windowStateKeeper = require('electron-window-state');
 
 // Add handling for the 'ignore' module
 let ignore;
@@ -30,8 +30,8 @@ try {
   tiktoken = null;
 }
 
-// Import the excluded files list
-import { excludedFiles, binaryExtensions } from "./excluded-files";
+// Import the excluded files list using require
+const { excludedFiles, binaryExtensions } = require("./excluded-files");
 
 // Initialize the encoder once at startup with better error handling
 let encoder;
