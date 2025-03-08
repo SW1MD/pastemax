@@ -177,7 +177,7 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
       
       // For Electron webview
       if (window.electron) {
-        // Execute script in the webview to find all text areas and create a selection UI
+        // Execute script in the webview to highlight text areas on hover
         webview.executeJavaScript(`
           (function() {
             // Find all interactive elements
@@ -186,22 +186,180 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
             const editableElements = Array.from(document.querySelectorAll('[contenteditable="true"]'));
             
             // Combine all elements
-            const allElements = [
-              ...textAreas.map(el => ({ type: 'textarea', element: el })),
-              ...textInputs.map(el => ({ type: 'input', element: el })),
-              ...editableElements.map(el => ({ type: 'contenteditable', element: el }))
-            ];
+            const allElements = [];
+            
+            // Add textareas
+            textAreas.forEach(el => {
+              allElements.push({ type: 'textarea', element: el });
+            });
+            
+            // Add text inputs
+            textInputs.forEach(el => {
+              allElements.push({ type: 'input', element: el });
+            });
+            
+            // Add contenteditable elements
+            editableElements.forEach(el => {
+              allElements.push({ type: 'contenteditable', element: el });
+            });
             
             if (allElements.length === 0) {
               alert('No text areas found on this page');
               return false;
             }
             
-            // If only one element, select it directly
-            if (allElements.length === 1) {
-              const { type, element } = allElements[0];
+            // Create a highlight effect for elements
+            const style = document.createElement('style');
+            style.id = 'pastemax-text-selector-style';
+            style.textContent = \`
+              .pastemax-highlight {
+                outline: 3px solid #4a90e2 !important;
+                outline-offset: 2px !important;
+                cursor: pointer !important;
+                box-shadow: 0 0 10px rgba(74, 144, 226, 0.5) !important;
+                transition: all 0.2s ease !important;
+              }
+              .pastemax-highlight:hover {
+                outline-color: #2a70c2 !important;
+                box-shadow: 0 0 15px rgba(74, 144, 226, 0.7) !important;
+              }
+              .pastemax-tooltip {
+                position: fixed;
+                background-color: #333;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-size: 12px;
+                z-index: 999999;
+                pointer-events: none;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+              }
+            \`;
+            document.head.appendChild(style);
+            
+            // Create tooltip element
+            const tooltip = document.createElement('div');
+            tooltip.className = 'pastemax-tooltip';
+            tooltip.style.display = 'none';
+            document.body.appendChild(tooltip);
+            
+            // Track if selection mode is active
+            let selectionModeActive = true;
+            let selectedElement = null;
+            
+            // Create a floating message to show instructions
+            const instructions = document.createElement('div');
+            instructions.style.position = 'fixed';
+            instructions.style.top = '10px';
+            instructions.style.left = '50%';
+            instructions.style.transform = 'translateX(-50%)';
+            instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            instructions.style.color = 'white';
+            instructions.style.padding = '10px 15px';
+            instructions.style.borderRadius = '5px';
+            instructions.style.zIndex = '999999';
+            instructions.style.fontSize = '14px';
+            instructions.style.fontFamily = 'Arial, sans-serif';
+            instructions.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+            instructions.style.display = 'flex';
+            instructions.style.alignItems = 'center';
+            instructions.style.gap = '10px';
+            
+            const instructionsText = document.createElement('span');
+            instructionsText.textContent = 'Hover over a text area and click to select it. ';
+            
+            const cancelButton = document.createElement('button');
+            cancelButton.textContent = 'Cancel';
+            cancelButton.style.backgroundColor = '#555';
+            cancelButton.style.border = 'none';
+            cancelButton.style.color = 'white';
+            cancelButton.style.padding = '5px 10px';
+            cancelButton.style.borderRadius = '3px';
+            cancelButton.style.cursor = 'pointer';
+            cancelButton.style.marginLeft = '10px';
+            
+            instructions.appendChild(instructionsText);
+            instructions.appendChild(cancelButton);
+            document.body.appendChild(instructions);
+            
+            // Add event listener to cancel button
+            cancelButton.addEventListener('click', function() {
+              cleanup();
+            });
+            
+            // Function to clean up all added elements and event listeners
+            function cleanup() {
+              // Remove styles and tooltips
+              const styleElement = document.getElementById('pastemax-text-selector-style');
+              if (styleElement) styleElement.remove();
+              
+              if (tooltip) tooltip.remove();
+              if (instructions) instructions.remove();
+              
+              // Remove highlight classes
+              allElements.forEach(item => {
+                item.element.classList.remove('pastemax-highlight');
+              });
+              
+              // Remove event listeners
+              allElements.forEach(item => {
+                item.element.removeEventListener('mouseover', handleMouseOver);
+                item.element.removeEventListener('mouseout', handleMouseOut);
+                item.element.removeEventListener('click', handleClick);
+              });
+              
+              document.removeEventListener('keydown', handleKeyDown);
+              
+              selectionModeActive = false;
+            }
+            
+            // Handle escape key to exit selection mode
+            function handleKeyDown(e) {
+              if (e.key === 'Escape') {
+                cleanup();
+              }
+            }
+            
+            // Add event listener for escape key
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Handle mouse over event
+            function handleMouseOver(e) {
+              if (!selectionModeActive) return;
+              
+              const element = e.target;
+              
+              // Show tooltip with element type
+              const elementType = element.tagName.toLowerCase() === 'textarea' ? 'Textarea' : 
+                                 (element.tagName.toLowerCase() === 'input' ? 'Input field' : 'Editable area');
+              
+              tooltip.textContent = 'Click to select this ' + elementType;
+              tooltip.style.display = 'block';
+              tooltip.style.left = (e.pageX + 10) + 'px';
+              tooltip.style.top = (e.pageY + 10) + 'px';
+            }
+            
+            // Handle mouse out event
+            function handleMouseOut() {
+              if (!selectionModeActive) return;
+              tooltip.style.display = 'none';
+            }
+            
+            // Handle click event
+            function handleClick(e) {
+              if (!selectionModeActive) return;
+              
+              e.preventDefault();
+              e.stopPropagation();
+              
+              const element = e.target;
+              
+              // Focus and select the element
               element.focus();
-              if (type === 'textarea' || type === 'input') {
+              
+              if (element.tagName.toLowerCase() === 'textarea' || 
+                 (element.tagName.toLowerCase() === 'input' && 
+                  ['text', 'search', 'email', 'password', 'tel', 'url'].includes(element.type))) {
                 element.select();
               } else {
                 // For contenteditable
@@ -211,135 +369,36 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
                 selection.removeAllRanges();
                 selection.addRange(range);
               }
+              
+              selectedElement = element;
+              
+              // Update instructions
+              instructionsText.textContent = 'Text area selected! You can now paste content.';
+              cancelButton.textContent = 'Done';
+              
+              // Clean up highlights but keep the instructions
+              allElements.forEach(item => {
+                item.element.classList.remove('pastemax-highlight');
+                item.element.removeEventListener('mouseover', handleMouseOver);
+                item.element.removeEventListener('mouseout', handleMouseOut);
+                item.element.removeEventListener('click', handleClick);
+              });
+              
+              tooltip.remove();
+              
+              // Store the selected element in a global variable for later access
+              window.pasteMaxSelectedElement = element;
+              
               return true;
             }
             
-            // Create a selection UI
-            const overlay = document.createElement('div');
-            overlay.style.position = 'fixed';
-            overlay.style.top = '0';
-            overlay.style.left = '0';
-            overlay.style.width = '100%';
-            overlay.style.height = '100%';
-            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-            overlay.style.zIndex = '9999999';
-            overlay.style.display = 'flex';
-            overlay.style.flexDirection = 'column';
-            overlay.style.alignItems = 'center';
-            overlay.style.justifyContent = 'center';
-            overlay.style.color = 'white';
-            overlay.style.fontFamily = 'Arial, sans-serif';
-            
-            const container = document.createElement('div');
-            container.style.backgroundColor = '#222';
-            container.style.borderRadius = '8px';
-            container.style.padding = '20px';
-            container.style.width = '80%';
-            container.style.maxWidth = '600px';
-            container.style.maxHeight = '80vh';
-            container.style.overflowY = 'auto';
-            
-            const title = document.createElement('h2');
-            title.textContent = 'Select a text area';
-            title.style.margin = '0 0 20px 0';
-            title.style.color = 'white';
-            title.style.fontSize = '18px';
-            
-            const closeButton = document.createElement('button');
-            closeButton.textContent = 'Close';
-            closeButton.style.position = 'absolute';
-            closeButton.style.top = '10px';
-            closeButton.style.right = '10px';
-            closeButton.style.padding = '5px 10px';
-            closeButton.style.backgroundColor = '#444';
-            closeButton.style.color = 'white';
-            closeButton.style.border = 'none';
-            closeButton.style.borderRadius = '4px';
-            closeButton.style.cursor = 'pointer';
-            
-            closeButton.onclick = () => {
-              document.body.removeChild(overlay);
-            };
-            
-            container.appendChild(title);
-            container.appendChild(closeButton);
-            
-            // Create list of elements
-            allElements.forEach((item, index) => {
-              const { type, element } = item;
-              
-              // Get a preview of the element's content
-              let content = '';
-              if (type === 'textarea' || type === 'input') {
-                content = element.value.substring(0, 50);
-              } else {
-                content = element.textContent.substring(0, 50);
-              }
-              
-              if (content.length === 0) {
-                content = `[Empty ${type}]`;
-              } else if (content.length === 50) {
-                content += '...';
-              }
-              
-              // Create a button for this element
-              const button = document.createElement('div');
-              button.style.padding = '10px';
-              button.style.margin = '5px 0';
-              button.style.backgroundColor = '#333';
-              button.style.borderRadius = '4px';
-              button.style.cursor = 'pointer';
-              button.style.display = 'flex';
-              button.style.flexDirection = 'column';
-              
-              const typeLabel = document.createElement('div');
-              typeLabel.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-              typeLabel.style.fontSize = '14px';
-              typeLabel.style.fontWeight = 'bold';
-              typeLabel.style.marginBottom = '5px';
-              
-              const contentPreview = document.createElement('div');
-              contentPreview.textContent = content;
-              contentPreview.style.fontSize = '12px';
-              contentPreview.style.color = '#ccc';
-              contentPreview.style.whiteSpace = 'nowrap';
-              contentPreview.style.overflow = 'hidden';
-              contentPreview.style.textOverflow = 'ellipsis';
-              
-              button.appendChild(typeLabel);
-              button.appendChild(contentPreview);
-              
-              button.onmouseover = () => {
-                button.style.backgroundColor = '#444';
-              };
-              
-              button.onmouseout = () => {
-                button.style.backgroundColor = '#333';
-              };
-              
-              button.onclick = () => {
-                // Select the chosen element
-                element.focus();
-                if (type === 'textarea' || type === 'input') {
-                  element.select();
-                } else {
-                  // For contenteditable
-                  const range = document.createRange();
-                  range.selectNodeContents(element);
-                  const selection = window.getSelection();
-                  selection.removeAllRanges();
-                  selection.addRange(range);
-                }
-                
-                // Remove the overlay
-                document.body.removeChild(overlay);
-              };
-              
-              container.appendChild(button);
+            // Add highlight class and event listeners to all elements
+            allElements.forEach(item => {
+              item.element.classList.add('pastemax-highlight');
+              item.element.addEventListener('mouseover', handleMouseOver);
+              item.element.addEventListener('mouseout', handleMouseOut);
+              item.element.addEventListener('click', handleClick);
             });
-            
-            overlay.appendChild(container);
-            document.body.appendChild(overlay);
             
             return true;
           })();
@@ -870,8 +929,16 @@ const WebBrowser = ({ initialUrl, onClose, onUrlChange }) => {
           </div>
         )}
       </div>
+      
+      {/* Context Menu */}
+      <ContextMenu
+        visible={contextMenu.visible}
+        position={contextMenu}
+        items={menuItems}
+        onClose={closeContextMenu}
+      />
     </div>
   );
 };
 
-export default WebBrowser; 
+export default WebBrowser;

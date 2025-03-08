@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Copy, Play, Plus, Settings, Edit, Tag, Bookmark, X } from 'lucide-react';
+import { Save, Copy, Play, Plus, Settings, Edit, Tag, Bookmark, X, Clipboard } from 'lucide-react';
 
 // Template prompt data
 const templatePrompts = [
@@ -570,6 +570,85 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     }, 1000);
   };
   
+  // Paste content to the selected text area in the browser
+  const pasteToTextArea = () => {
+    // Get the appropriate prompt based on the active tab
+    const contentToPaste = activeTab === 'user' 
+      ? (userPromptTab === 'preview' ? promptPreview : userPrompt)
+      : (finalPrompt || customPrompt);
+    
+    if (!contentToPaste || contentToPaste.trim() === '') {
+      alert('No content to paste. Please create or select a prompt first.');
+      return;
+    }
+    
+    // Check if there's a selected element in the browser
+    if (window.electron) {
+      // Get the webview element
+      const webviews = document.querySelectorAll('webview');
+      if (webviews.length === 0) {
+        alert('No browser window is open. Please open a browser and select a text area first.');
+        return;
+      }
+      
+      // Use the first webview found (we could make this more specific in the future)
+      const webview = webviews[0];
+      
+      // Execute script to check if an element is selected and paste content
+      webview.executeJavaScript(`
+        (function() {
+          // Check if we have a selected element from our previous selection
+          if (window.pasteMaxSelectedElement) {
+            const element = window.pasteMaxSelectedElement;
+            
+            // Check if the element still exists in the DOM
+            if (document.body.contains(element)) {
+              // Focus the element
+              element.focus();
+              
+              // Paste content based on element type
+              if (element.tagName.toLowerCase() === 'textarea' || 
+                 (element.tagName.toLowerCase() === 'input' && 
+                  ['text', 'search', 'email', 'password', 'tel', 'url'].includes(element.type))) {
+                // For input and textarea elements, we can set the value directly
+                element.value = ${JSON.stringify(contentToPaste)};
+                
+                // Trigger input event to notify any listeners
+                const event = new Event('input', { bubbles: true });
+                element.dispatchEvent(event);
+                
+                return true;
+              } else if (element.isContentEditable) {
+                // For contenteditable elements
+                element.innerHTML = ${JSON.stringify(contentToPaste)};
+                
+                // Trigger input event
+                const event = new Event('input', { bubbles: true });
+                element.dispatchEvent(event);
+                
+                return true;
+              }
+            }
+          }
+          
+          alert('No text area is selected. Please use the "Select text area" option first.');
+          return false;
+        })();
+      `).then(result => {
+        if (result) {
+          console.log('Content pasted successfully');
+        } else {
+          console.log('Failed to paste content');
+        }
+      }).catch(err => {
+        console.error('Error pasting content:', err);
+        alert('Error pasting content to text area');
+      });
+    } else {
+      alert('This feature requires Electron to work. It is not available in browser mode.');
+    }
+  };
+  
   // Save the user prompt directly
   const saveUserPrompt = () => {
     const promptName = 'User Prompt ' + new Date().toLocaleDateString();
@@ -1016,25 +1095,47 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
           </div>
           
           <div className="prompt-actions">
-            <button className="prompt-action-btn" onClick={copyToClipboard}>
+            <button 
+              className="prompt-action-btn"
+              onClick={copyToClipboard}
+              disabled={loading}
+            >
               <Copy size={16} />
-              Copy
+              Copy to Clipboard
             </button>
-            <button className="prompt-action-btn" onClick={() => {
-              setCustomPrompt(userPrompt);
-              setActiveTab('custom');
-            }}>
-              <Edit size={16} />
-              Edit as Custom
+            
+            <button 
+              className="prompt-action-btn"
+              onClick={pasteToTextArea}
+              disabled={loading}
+              style={{
+                backgroundColor: 'var(--primary-color)',
+                color: 'white'
+              }}
+            >
+              <Clipboard size={16} />
+              Paste to Text Area
             </button>
-            <button className="prompt-action-btn" onClick={saveUserPrompt}>
-              <Save size={16} />
-              Save
-            </button>
-            <button className="prompt-action-btn primary" onClick={applyPrompt} disabled={loading}>
+            
+            <button 
+              className="prompt-action-btn"
+              onClick={applyPrompt}
+              disabled={loading}
+            >
               <Play size={16} />
               {loading ? 'Applying...' : 'Apply Prompt'}
             </button>
+            
+            {activeTab === 'user' && (
+              <button 
+                className="prompt-action-btn"
+                onClick={saveUserPrompt}
+                disabled={loading || !userPrompt.trim()}
+              >
+                <Save size={16} />
+                Save Prompt
+              </button>
+            )}
           </div>
         </>
       )}
