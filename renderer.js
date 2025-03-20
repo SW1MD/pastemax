@@ -47,22 +47,15 @@ window.electron.receive("file-list-data", (files) => {
   // Handle received files data
   allFiles = files;
   
-  // Auto-select all valid files (not binary or skipped)
-  const validFiles = files.filter(file => !file.isBinary && !file.isSkipped);
+  // Don't auto-select all files - let the user select files manually
+  selectedFiles = [];
+  console.log(`Starting with no files selected - user must click to select`);
   
-  if (validFiles.length > 0) {
-    // Clear and re-add selected files
-    selectedFiles = validFiles.map(file => file.path);
-    console.log(`Auto-selected ${selectedFiles.length} files`);
-    
-    // Apply filters and sort to update the displayed files
-    applyFiltersAndSort();
-    
-    // Notify React app about selection
-    window.electron.send("selected-files-updated", selectedFiles);
-  } else {
-    applyFiltersAndSort();
-  }
+  // Apply filters and sort to update the displayed files
+  applyFiltersAndSort();
+  
+  // Notify React app about selection (empty selection)
+  window.electron.send("selected-files-updated", selectedFiles);
 });
 
 // Add listener for selection updates from React app

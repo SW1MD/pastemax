@@ -272,15 +272,11 @@ const App = () => {
       // Apply filters and sort to the new files
       applyFiltersAndSort(files, sortOrder, searchTerm);
 
-      // Select only files that are not binary, not skipped, and not excluded by default
-      const selectablePaths = files
-        .filter(
-          (file) =>
-            !file.isBinary && !file.isSkipped && !file.excludedByDefault
-        )
-        .map((file) => file.path);
-
-      setSelectedFiles(selectablePaths);
+      // Don't auto-select all files - start with empty selection
+      // so only files the user explicitly clicks will be selected
+      setSelectedFiles([]);
+      setFileCounter(0);
+      setTokenCounter(0);
     });
 
     window.electron.receive("file-processing-status", (status) => {
@@ -1143,30 +1139,38 @@ const App = () => {
     };
   }, [showFilesPopover]);
 
-  // Get list of selected file names
+  // Get list of selected file names - simplify to ONLY show files the user has manually clicked (blue highlighted)
   const getSelectedFilesList = () => {
-    // Create a Map to track unique files by path to prevent duplicates
-    const uniqueFiles = new Map();
+    // Get directly from the selectedFiles array - ONLY the files that are manually selected by user
+    const highlightedFiles = [];
     
-    // Only return the files that are actually being counted in fileCounter
-    selectedFiles.forEach(path => {
-      const file = allFiles.find(f => f.path === path);
-      // Only include files that are valid (not binary, not skipped)
-      if (file && !file.isBinary && !file.isSkipped && !uniqueFiles.has(path)) {
-        uniqueFiles.set(path, {
+    console.log(`Getting ONLY manually selected files (blue highlighted files in UI)`);
+    
+    // Look through each selected file path
+    for (const path of selectedFiles) {
+      // Find the file by path directly from allFiles
+      const file = allFiles.find(f => {
+        // Match by exact path or path with normalized slashes
+        return f.path === path || 
+               f.path.replace(/\\/g, '/') === path.replace(/\\/g, '/');
+      });
+      
+      // Only include if we found the file and it's a valid file
+      if (file && !file.isBinary && !file.isSkipped) {
+        console.log(`Including manually selected file: ${file.name} (${file.tokenCount} tokens)`);
+        highlightedFiles.push({
           name: file.name,
           path: file.path,
           tokenCount: file.tokenCount || 0
         });
       }
-    });
+    }
     
-    // Convert Map values to array and sort
-    return Array.from(uniqueFiles.values())
-      .sort((a, b) => {
-        // Sort by token count (largest first)
-        return b.tokenCount - a.tokenCount;
-      });
+    // Log what we found
+    console.log(`Found ${highlightedFiles.length} manually selected files`);
+    
+    // Sort by token count (largest first)
+    return highlightedFiles.sort((a, b) => b.tokenCount - a.tokenCount);
   };
 
   // Update the renderFileBrowser function
