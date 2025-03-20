@@ -1,4 +1,4 @@
-import React, { useState, useEffect, MouseEventHandler } from "react";
+import React, { useState, useEffect, MouseEventHandler, useRef } from "react";
 import { SidebarProps } from "../types/FileTypes";
 import { ChevronLeft, ChevronRight, FileText, Edit, Settings, MessageSquare, Folder, MoreVertical } from "lucide-react";
 
@@ -10,10 +10,50 @@ const Sidebar = ({
 }: SidebarProps) => {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef(null);
 
   // Minimum and maximum sidebar widths
   const MIN_SIDEBAR_WIDTH = 180;
   const MAX_SIDEBAR_WIDTH = 320;
+
+  // Set the CSS variable immediately
+  document.documentElement.style.setProperty('--sidebar-width', collapsed ? '60px' : `${sidebarWidth}px`);
+
+  // Update sidebar width based on window size
+  const updateSidebarWidthForScreenSize = () => {
+    let newWidth = 220; // Default width
+    
+    // Apply the same width rules as in CSS media queries
+    if (window.innerWidth <= 480) {
+      newWidth = 160;
+    } else if (window.innerWidth <= 768) {
+      newWidth = 180;
+    } else if (window.innerWidth <= 992) {
+      newWidth = 180;
+    } else if (window.innerWidth <= 1200) {
+      newWidth = 200;
+    }
+    
+    if (!isResizing) { // Don't override user resizing
+      setSidebarWidth(newWidth);
+      document.documentElement.style.setProperty('--sidebar-width', collapsed ? (window.innerWidth <= 768 ? '50px' : '60px') : `${newWidth}px`);
+    }
+  };
+
+  // Listen for window resize events
+  useEffect(() => {
+    window.addEventListener('resize', updateSidebarWidthForScreenSize);
+    updateSidebarWidthForScreenSize(); // Initialize on mount
+    
+    return () => {
+      window.removeEventListener('resize', updateSidebarWidthForScreenSize);
+    };
+  }, [collapsed, isResizing]);
+
+  // Initialize CSS variable for sidebar width
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-width', collapsed ? '60px' : `${sidebarWidth}px`);
+  }, []);
 
   // Handle mouse down for resizing
   const handleResizeStart = () => {
@@ -27,6 +67,8 @@ const Sidebar = ({
         const newWidth = e.clientX;
         if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= MAX_SIDEBAR_WIDTH) {
           setSidebarWidth(newWidth);
+          // Update CSS variable immediately during resize
+          document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
         }
       }
     };
@@ -43,6 +85,11 @@ const Sidebar = ({
       document.removeEventListener("mouseup", handleResizeEnd);
     };
   }, [isResizing]);
+
+  useEffect(() => {
+    // Update CSS variable for sidebar width whenever it changes
+    document.documentElement.style.setProperty('--sidebar-width', collapsed ? '60px' : `${sidebarWidth}px`);
+  }, [collapsed, sidebarWidth]);
 
   // Navigation items
   const navItems = [

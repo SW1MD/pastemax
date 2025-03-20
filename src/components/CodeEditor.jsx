@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Copy, Settings, Code, FileText, Check, ChevronLeft, ChevronRight, Home, Folder, FolderOpen } from 'lucide-react';
 import { Editor } from '@monaco-editor/react';
+import loader from '@monaco-editor/react';
 
 const CodeEditor = ({ 
   filePath, 
@@ -33,27 +34,54 @@ const CodeEditor = ({
   const editorRef = useRef(null);
   const lineNumbersRef = useRef(null);
   
-  // Detect system theme preference when theme is set to 'auto'
+  // Set loader configuration
   useEffect(() => {
-    if (theme === 'auto') {
-      const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      
-      const updateTheme = (e) => {
-        setCurrentTheme(e.matches ? 'tomorrow_night' : 'github');
-      };
-      
-      // Set initial theme
-      updateTheme(darkModeMediaQuery);
-      
-      // Listen for changes
-      darkModeMediaQuery.addEventListener('change', updateTheme);
-      
-      return () => {
-        darkModeMediaQuery.removeEventListener('change', updateTheme);
-      };
+    loader.config({
+      monaco: null, // Don't use CDN
+      paths: {
+        vs: '/monaco/vs' // Serve the monaco files from the public directory if needed
+      }
+    });
+  }, []);
+  
+  // Handle theme changes and system preference
+  useEffect(() => {
+    const updateTheme = () => {
+      if (theme === 'auto') {
+        const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setCurrentTheme(prefersDarkMode ? 'dark' : 'github');
+      } else {
+        setCurrentTheme(theme);
+      }
+    };
+    
+    updateTheme();
+    
+    // Listen for system theme changes
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e) => {
+      if (theme === 'auto') {
+        setCurrentTheme(e.matches ? 'dark' : 'github');
+      }
+    };
+    
+    // Add event listener for theme changes (with compatibility check)
+    if (darkModeMediaQuery.addEventListener) {
+      darkModeMediaQuery.addEventListener('change', handleChange);
     } else {
-      setCurrentTheme(theme);
+      // Fallback for older browsers
+      darkModeMediaQuery.addListener(handleChange);
     }
+    
+    // Cleanup function
+    return () => {
+      if (darkModeMediaQuery.removeEventListener) {
+        darkModeMediaQuery.removeEventListener('change', handleChange);
+      } else {
+        // Fallback for older browsers
+        darkModeMediaQuery.removeListener(handleChange);
+      }
+    };
   }, [theme]);
   
   // Add a compatibility layer for different prop formats
@@ -169,7 +197,7 @@ const CodeEditor = ({
       fontSize: fontSize,
       fontFamily: "'Fira Code', Consolas, 'Courier New', monospace",
       lineNumbers: 'on',
-      scrollBeyondLastLine: true,
+      scrollBeyondLastLine: false,
       minimap: { enabled: false },
       lineHeight: 1.5,
       tabSize: tabSize,
@@ -183,10 +211,15 @@ const CodeEditor = ({
         horizontalScrollbarSize: 10,
         alwaysConsumeMouseWheel: false
       },
-      overviewRulerBorder: true,
+      overviewRulerBorder: false,
       overviewRulerLanes: 0,
       hideCursorInOverviewRuler: true,
-      fixedOverflowWidgets: true
+      fixedOverflowWidgets: true,
+      folding: true,
+      renderLineHighlight: 'all',
+      wordWrap: 'on',
+      wordWrapColumn: 80,
+      wrappingIndent: 'indent'
     };
   };
   
@@ -478,16 +511,18 @@ const CodeEditor = ({
       <div className="code-editor-content">
         <Editor
           height="100%"
+          width="100%"
           language={getLanguage()}
           value={editorContent}
-          theme={currentTheme === 'tomorrow_night' || currentTheme === 'dark' ? 'vs-dark' : 'vs-light'}
+          theme={currentTheme === 'tomorrow_night' || currentTheme === 'dark' ? 'vs-dark' : 'light'}
           options={getEditorOptions()}
           onChange={(value) => {
             setEditorContent(value);
             setIsModified(true);
           }}
           onMount={handleEditorDidMount}
-          className={`monaco-editor ${problemHighlightingActive ? 'problem-highlighting-active' : ''}`}
+          className="monaco-editor-container"
+          loading={<div className="loading-editor">Loading editor...</div>}
         />
         
         <div className={`save-success-message ${showSaveSuccess ? 'visible' : ''}`}>

@@ -1251,81 +1251,6 @@ const App = () => {
         <div className="file-browser">
           {buildFileTree().map(node => renderFileTreeNode(node))}
         </div>
-
-        {/* File Selection Counter */}
-        <div className="file-selection-counter">
-          <div className="files-counter-label" onClick={toggleFilesPopover}>
-            <span className="counter-label">Selected Files:</span>
-            <span className="counter-value">{fileCounter}</span>
-          </div>
-          
-          {showFilesPopover && (
-            <div className="selected-files-popover" ref={filesPopoverRef}>
-              <div className="popover-header">
-                <h3>Selected Files</h3>
-                <button 
-                  className="close-popover-btn"
-                  onClick={() => setShowFilesPopover(false)}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="selected-files-list">
-                {getSelectedFilesList().length > 0 ? (
-                  getSelectedFilesList().map((file, index) => (
-                    <div key={index} className="selected-file-item">
-                      <span className="selected-file-name">{file.name}</span>
-                      <span className="selected-file-tokens">{file.tokenCount.toLocaleString()} tokens</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="no-files-message">No files selected</div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          <span className="token-counter">
-            <span className="counter-label">Total Tokens:</span>
-            <span className="counter-value">{tokenCounter.toLocaleString()}</span>
-          </span>
-          
-          {/* Always show buttons */}
-          <button 
-            className="counter-copy-btn"
-            onClick={() => {
-              // Copy the content of all selected files
-              const content = getSelectedFilesContent();
-              navigator.clipboard.writeText(content);
-              // Show a temporary success message
-              setProcessingStatus({
-                status: "complete",
-                message: "Copied content to clipboard"
-              });
-              // Clear the message after 2 seconds
-              setTimeout(() => {
-                setProcessingStatus({
-                  status: "idle",
-                  message: ""
-                });
-              }, 2000);
-            }}
-            title="Copy content of selected files"
-            disabled={fileCounter === 0}
-          >
-            Copy
-          </button>
-          <button 
-            className="counter-clear-btn"
-            onClick={() => {
-              resetCounters();
-            }}
-            title="Clear selection"
-            disabled={fileCounter === 0}
-          >
-            Clear
-          </button>
-        </div>
       </div>
     );
   };
@@ -1803,14 +1728,13 @@ const App = () => {
   };
 
   return (
-    <div className="app-container">
+    <div className="app-container" data-theme={themeMode}>
       <div className="header">
         <h1>PasteMax</h1>
         <div className="folder-info">
           {selectedFolder ? (
             <>
               <div className="selected-folder">
-                <span className="folder-label">Selected Folder:</span>
                 <span className="folder-path">{selectedFolder}</span>
               </div>
             </>
@@ -1915,152 +1839,76 @@ const App = () => {
                         findSelectedFilesInTree(buildFileTree());
                         
                         // If no files were found, try to use the selectedFiles array directly
-                        if (actuallySelectedFiles.length === 0 && fileCounter > 0) {
-                          console.log("No files found in tree, using selectedFiles directly");
-                          // Get selected files from allFiles
+                        if (actuallySelectedFiles.length === 0) {
+                          console.log('No files found in tree, using selectedFiles directly');
                           return selectedFiles.map(path => {
                             const file = allFiles.find(f => f.path === path);
-                            return {
-                              path,
-                              content: file ? file.content : null
-                            };
-                          }).filter(file => file.content !== null); // Only include files with content
+                            if (file) {
+                              return {
+                                path: file.path,
+                                content: file.content
+                              };
+                            }
+                            return null;
+                          }).filter(Boolean);
                         }
                         
-                        console.log('Passing actuallySelectedFiles to PromptEngine:', actuallySelectedFiles);
                         return actuallySelectedFiles;
                       })()}
-                      projectRules={allFiles.find(f => f.path === '.rules')?.content || ''}
-                    />
-                  )}
-
-                  {activePage === "edit" && (
-                    <div className="editor-view">
-                      <EditorPage
-                        filePath={currentFile}
-                        content={fileContent}
-                        currentDirectory={currentDirectory || selectedFolder}
-                        onSave={saveFile}
-                        onClose={() => {
-                          setIsEditing(false);
-                          setActivePage("select");
-                        }}
-                        onCreateFile={handleFileCreationWithContent}
-                        onCreateFolder={handleCreateFolder}
-                        onNavigate={navigateToFileFromEditor}
-                        theme={themeMode === 'dark' ? 'tomorrow_night' : 'github'}
-                        fileHistory={fileHistory}
-                        recentFiles={recentFiles}
-                        recentFolders={recentFolders}
-                      />
-                    </div>
-                  )}
-
-                  {activePage === "project" && (
-                    <ProjectConfig 
-                      selectedFolder={selectedFolder}
+                      fileCounter={fileCounter}
+                      tokenCounter={tokenCounter}
+                      toggleSidebar={toggleSidebar}
+                      sidebarCollapsed={sidebarCollapsed}
                       onClose={() => setActivePage("select")}
                     />
                   )}
 
-                  {activePage === "terminal" && (
-                    <div className="placeholder-message" style={{ 
-                      padding: '2rem', 
-                      textAlign: 'center',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '100%'
-                    }}>
-                      <h3>Terminal functionality has been removed</h3>
-                      <p>The terminal feature has been disabled for security reasons.</p>
-                      <button 
-                        className="btn" 
-                        style={{ 
-                          marginTop: '1rem',
-                          padding: '0.5rem 1rem',
-                          background: 'var(--primary-color)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
-                        }} 
-                        onClick={() => setActivePage("select")}
-                      >
-                        Go Back
-                      </button>
+                  {activePage === "project" && (
+                    <ProjectConfig 
+                      currentFolder={selectedFolder}
+                      onReload={() => {
+                        if (isElectron) {
+                          window.electron.send("load-files", selectedFolder);
+                        }
+                      }}
+                    />
+                  )}
+
+                  {activePage === "history" && (
+                    <div className="history-page">
+                      <h2>History</h2>
+                      <p>This page will show your recent files and activities.</p>
                     </div>
                   )}
 
                   {activePage === "settings" && (
                     <div className="settings-page">
-                      <div className="settings-header">
-                        <h2>Settings</h2>
-                      </div>
+                      <h2>Settings</h2>
                       
-                      <div className="settings-content">
-                        <div className="settings-section">
-                          <div className="settings-section-header">
-                            <h3>Appearance</h3>
-                          </div>
-                          <div className="settings-section-content">
-                            <div className="settings-option">
-                              <div className="settings-option-label">
-                                <label>Theme</label>
-                                <span className="settings-option-description">
-                                  Choose between light and dark theme for the application
-                                </span>
-                              </div>
-                              <div className="settings-option-control">
-                                <div className="theme-selector">
-                                  <button 
-                                    className={`theme-option ${themeMode === 'light' ? 'active' : ''}`}
-                                    onClick={() => toggleThemeMode()}
-                                  >
-                                    <div className="theme-preview light"></div>
-                                    <span>Light</span>
-                                  </button>
-                                  <button 
-                                    className={`theme-option ${themeMode === 'dark' ? 'active' : ''}`}
-                                    onClick={() => toggleThemeMode()}
-                                  >
-                                    <div className="theme-preview dark"></div>
-                                    <span>Dark</span>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="settings-section">
-                          <div className="settings-section-header">
-                            <h3>Token Management</h3>
-                          </div>
-                          <div className="settings-section-content">
-                            <div className="settings-option">
-                              <div className="settings-option-label">
-                                <label htmlFor="token-warning-limit">Warning Limit</label>
-                                <span className="settings-option-description">
-                                  You'll receive a warning when your selected files approach or exceed this token limit
-                                </span>
-                              </div>
-                              <div className="settings-option-control">
-                                <div className="token-limit-control">
-                                  <input 
-                                    id="token-warning-limit"
-                                    type="number" 
-                                    min="100" 
-                                    max="100000" 
-                                    value={tokenWarningLimit}
-                                    onChange={(e) => setTokenWarningThreshold(e.target.value)}
-                                  />
-                                  <span className="token-limit-unit">tokens</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                      <div className="settings-section">
+                        <h3>Theme</h3>
+                        <div className="settings-option">
+                          <label>
+                            <input
+                              type="radio"
+                              name="theme"
+                              value="light"
+                              checked={themeMode === 'light'}
+                              onChange={() => setThemeMode('light')}
+                            />
+                            Light
+                          </label>
+                          
+                          <label>
+                            <input
+                              type="radio"
+                              name="theme"
+                              value="dark"
+                              checked={themeMode === 'dark'}
+                              onChange={() => setThemeMode('dark')}
+                            />
+                            Dark
+                          </label>
                         </div>
                       </div>
                     </div>
@@ -2102,6 +1950,79 @@ const App = () => {
               </div>
             </>
           )}
+        </div>
+      )}
+      
+      {/* File Selection Counter - moved outside the main structure to fix positioning */}
+      {selectedFolder && (
+        <div className={`file-selection-counter ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+          <div className="files-counter-label" onClick={toggleFilesPopover}>
+            <span className="counter-label">Selected Files:</span>
+            <span className="counter-value">{fileCounter}</span>
+          </div>
+          
+          {showFilesPopover && (
+            <div className={`selected-files-popover ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`} ref={filesPopoverRef}>
+              <div className="popover-header">
+                <h3>Selected Files</h3>
+                <button 
+                  className="close-popover-btn"
+                  onClick={() => setShowFilesPopover(false)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="selected-files-list">
+                {getSelectedFilesList().length > 0 ? (
+                  getSelectedFilesList().map((file, index) => (
+                    <div key={index} className="selected-file-item">
+                      <span className="selected-file-name">{file.name}</span>
+                      <span className="selected-file-tokens">{file.tokenCount.toLocaleString()} tokens</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-files-message">No files selected</div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <span className="token-counter">
+            <span className="counter-label">Total Tokens:</span>
+            <span className="counter-value">{tokenCounter.toLocaleString()}</span>
+          </span>
+          
+          <button
+            className="counter-copy-btn"
+            onClick={() => {
+              // Copy the content of all selected files
+              const content = getSelectedFilesContent();
+              navigator.clipboard.writeText(content);
+              // Show a temporary success message
+              setProcessingStatus({
+                status: "complete",
+                message: "Copied content to clipboard"
+              });
+              // Clear the message after 2 seconds
+              setTimeout(() => {
+                setProcessingStatus({
+                  status: "idle",
+                  message: ""
+                });
+              }, 2000);
+            }}
+            disabled={fileCounter === 0}
+          >
+            Copy
+          </button>
+          
+          <button
+            className="counter-clear-btn"
+            onClick={resetCounters}
+            disabled={fileCounter === 0}
+          >
+            Clear
+          </button>
         </div>
       )}
     </div>

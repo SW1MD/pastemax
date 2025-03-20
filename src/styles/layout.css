@@ -25,7 +25,16 @@
   padding: 6px 12px;
   border-radius: 4px;
   background-color: var(--hover-color);
-  max-width: 300px;
+  max-width: 500px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.folder-path {
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -184,7 +193,7 @@ body.resizing .resize-handle {
 /* Content area - right side */
 .content-area {
   flex: 1;
-  padding: 8px 16px 16px 16px; /* Keep reduced top padding */
+  padding: 8px 16px 60px 16px; /* Increased bottom padding to accommodate the fixed footer */
   overflow-y: auto;
   overflow-x: hidden; /* Prevent horizontal overflow */
   display: flex;
@@ -226,7 +235,7 @@ body.resizing .resize-handle {
   }
   
   .selected-folder {
-    max-width: 250px;
+    max-width: 400px;
   }
 }
 
@@ -236,7 +245,7 @@ body.resizing .resize-handle {
   }
   
   .selected-folder {
-    max-width: 200px;
+    max-width: 320px;
     font-size: 13px;
   }
   
@@ -277,6 +286,10 @@ body.resizing .resize-handle {
   .resize-handle.horizontal {
     display: none;
   }
+  
+  .selected-folder {
+    max-width: 250px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -293,7 +306,7 @@ body.resizing .resize-handle {
   }
   
   .selected-folder {
-    max-width: 150px;
+    max-width: 200px;
     font-size: 12px;
   }
   
@@ -312,7 +325,7 @@ body.resizing .resize-handle {
   }
   
   .selected-folder {
-    max-width: 120px;
+    max-width: 180px;
     font-size: 11px;
   }
   

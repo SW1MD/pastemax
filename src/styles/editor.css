@@ -221,9 +221,32 @@
 
 /* Editor Content Area */
 .code-editor-content {
-  flex: 1;
   position: relative;
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 40px); /* Subtract header height */
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure Monaco editor is rendered properly */
+.monaco-editor {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden;
+}
+
+/* Fix for editor container */
+.monaco-editor .overflow-guard {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure Monaco wrapper element takes full height */
+.monaco-editor-container {
+  height: 100% !important;
+  width: 100% !important;
 }
 
 /* Line Numbers */
@@ -475,24 +498,6 @@
   color: var(--secondary-color);
   font-family: inherit;
   user-select: none;
-}
-
-/* Make sure the Monaco editor container takes full height */
-.monaco-editor {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* Ensure scrollbars are visible */
-.monaco-scrollable-element {
-  /* Remove the !important overflow setting */
-  /* overflow: auto !important; */
-}
-
-.monaco-editor .overflow-guard {
-  position: relative !important;
-  /* Remove the forced overflow setting */
-  /* overflow: auto !important; */
 }
 
 /* Problem highlight toggle */
@@ -1062,4 +1067,17 @@
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+}
+
+/* Add loading indicator for editor */
+.loading-editor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  font-size: 14px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  opacity: 0.8;
 } 
