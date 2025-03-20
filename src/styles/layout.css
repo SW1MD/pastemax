@@ -53,29 +53,17 @@
 .main-content {
   display: flex;
   flex: 1;
+  height: calc(100vh - 0px);
   overflow: hidden;
-  height: 100%;
-  width: 100%;
   position: relative;
-  max-width: 100vw; /* Prevent expanding beyond viewport */
 }
 
-/* Split Window Layout */
 .main-content.split-view {
-  display: flex;
-  flex-direction: row; /* Explicit row direction */
-  height: calc(100vh - 60px);
-  width: 100%;
-  overflow: hidden;
-  min-width: 700px;
-  position: relative;
-  max-width: 100vw; /* Prevent expanding beyond viewport */
+  flex-direction: row;
 }
 
 .main-content:not(.split-view) {
-  height: calc(100vh - 60px);
-  overflow: hidden;
-  position: relative;
+  flex-direction: column;
 }
 
 .pastemax-container {
@@ -122,15 +110,27 @@
 
 /* Resize Handle */
 .resize-handle {
-  width: 8px;
-  height: 100%;
-  background-color: var(--border-color);
-  cursor: col-resize;
   position: relative;
   z-index: 10;
-  transition: none; /* Remove background-color transition */
-  margin: 0 -2px;
+  transition: background-color 0.15s;
   touch-action: none;
+  background-color: var(--border-color);
+}
+
+/* Horizontal resize handle (default) */
+.resize-handle.horizontal {
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  margin: 0 -2px;
+}
+
+/* Vertical resize handle (for mobile/tablet) */
+.resize-handle.vertical {
+  width: 100%;
+  height: 8px;
+  cursor: row-resize;
+  margin: -2px 0;
 }
 
 .resize-handle::after {
@@ -139,10 +139,18 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 4px;
-  height: 30px;
   background-color: var(--border-color);
   border-radius: 2px;
+}
+
+.resize-handle.horizontal::after {
+  width: 4px;
+  height: 30px;
+}
+
+.resize-handle.vertical::after {
+  width: 30px;
+  height: 4px;
 }
 
 .resize-handle:hover,
@@ -151,9 +159,16 @@
 }
 
 body.resizing {
-  cursor: col-resize !important;
   user-select: none;
   overflow: hidden;
+}
+
+body.resizing.vertical-resize {
+  cursor: row-resize !important;
+}
+
+body.resizing.horizontal-resize {
+  cursor: col-resize !important;
 }
 
 body.resizing * {
@@ -204,25 +219,115 @@ body.resizing .resize-handle {
 
 /* Media queries for responsive layout */
 
+/* Responsive media queries */
+@media (max-width: 1400px) {
+  .header h1 {
+    font-size: 18px;
+  }
+  
+  .selected-folder {
+    max-width: 250px;
+  }
+}
 
-/* Add styles for screens larger than 800px but smaller than 1024px */
-@media (min-width: 801px) and (max-width: 1024px) {
+@media (max-width: 1200px) {
+  .header {
+    padding: 12px 16px;
+  }
+  
+  .selected-folder {
+    max-width: 200px;
+    font-size: 13px;
+  }
+  
+  .select-folder-btn {
+    min-width: 100px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 992px) {
+  .main-content.split-view {
+    flex-direction: column;
+  }
+  
   .browser-container {
-    flex: 0 0 450px !important; /* FIXED basis */
-    width: 450px !important;
-    max-width: 450px !important;
-    min-width: 450px !important;
-    transition: none !important;
+    width: 100% !important;
+    height: 300px;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
   }
   
   .pastemax-container {
-    min-width: 350px !important;
-    flex: 1 1 auto !important; /* Allow growing */
-    transition: none !important;
+    width: 100% !important;
+    height: calc(100vh - 300px - 50px); /* 50px is approx header height */
   }
   
-  .main-content.split-view {
-    flex-direction: row; /* Ensure row layout */
+  .resize-handle.vertical {
+    display: block;
+    width: 100%;
+    height: 6px;
+    cursor: ns-resize;
+    top: auto;
+    bottom: 0;
+  }
+  
+  .resize-handle.horizontal {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  
+  .folder-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .selected-folder {
+    max-width: 150px;
+    font-size: 12px;
+  }
+  
+  .browser-container {
+    height: 250px;
+  }
+  
+  .pastemax-container {
+    height: calc(100vh - 250px - 80px); /* 80px is approx header height when stacked */
+  }
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 16px;
+  }
+  
+  .selected-folder {
+    max-width: 120px;
+    font-size: 11px;
+  }
+  
+  .select-folder-btn {
+    min-width: 80px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .browser-container {
+    height: 200px;
+  }
+  
+  .pastemax-container {
+    height: calc(100vh - 200px - 80px);
   }
 }
 

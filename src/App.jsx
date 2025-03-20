@@ -752,22 +752,45 @@ const App = () => {
   const splitContainerRef = useRef(null);
   const resizeHandleRef = useRef(null);
   const [isResizing, setIsResizing] = useState(false);
+  const [isVerticalResize, setIsVerticalResize] = useState(false);
   const pasteSizeRef = useRef(50); // Keep reference to avoid stale closures
+
+  // Check if we're in mobile view (for vertical resize)
+  useEffect(() => {
+    const checkOrientation = () => {
+      setIsVerticalResize(window.innerWidth <= 992);
+    };
+    
+    // Initial check
+    checkOrientation();
+    
+    // Listen for resize events
+    window.addEventListener('resize', checkOrientation);
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+    };
+  }, []);
 
   // Memoize handlers to avoid recreation on each render
   const handleResizeStart = useCallback((e) => {
     e.preventDefault();
     document.body.classList.add('resizing');
+    // Add appropriate resize direction class
+    document.body.classList.add(isVerticalResize ? 'vertical-resize' : 'horizontal-resize');
     setIsResizing(true);
     pasteSizeRef.current = 50;
     
     // Capture the initial position of the mouse/touch and handle
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
     resizeHandleRef.current = {
       startX: clientX,
+      startY: clientY,
       startPasteMaxWidth: pasteSizeRef.current
     };
-  }, []);
+  }, [isVerticalResize]);
 
   const handleResizeMove = useCallback(() => {
     // In a fixed-width approach, we don't need resize logic for the browser width
@@ -776,6 +799,8 @@ const App = () => {
 
   const handleResizeEnd = useCallback(() => {
     document.body.classList.remove('resizing');
+    document.body.classList.remove('vertical-resize');
+    document.body.classList.remove('horizontal-resize');
     setIsResizing(false);
     resizeHandleRef.current = null;
   }, []);
@@ -2065,7 +2090,7 @@ const App = () => {
           {browserVisible && (
             <>
               <div 
-                className="resize-handle" 
+                className={`resize-handle ${isVerticalResize ? 'vertical' : 'horizontal'}`}
                 onMouseDown={handleResizeStart}
                 onTouchStart={handleResizeStart}
               ></div>
