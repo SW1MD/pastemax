@@ -169,7 +169,7 @@ body.resizing .resize-handle {
 /* Content area - right side */
 .content-area {
   flex: 1;
-  padding: 16px;
+  padding: 8px 16px 16px 16px; /* Keep reduced top padding */
   overflow-y: auto;
   overflow-x: hidden; /* Prevent horizontal overflow */
   display: flex;
@@ -179,13 +179,17 @@ body.resizing .resize-handle {
   max-width: 100%; /* Prevent expanding beyond container */
   z-index: 50 !important; 
   position: relative;
+  border-top: none; /* Ensure no border at the top */
 }
 
 .content-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 8px; /* Reduced from 16px */
+  padding: 0; /* Added padding 0 */
+  position: relative;
+  z-index: 60; /* Lower than file-browser-header but higher than most content */
 }
 
 .content-title {
@@ -234,6 +238,7 @@ body.resizing .resize-handle {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
+  z-index: 1 !important; /* Set base z-index */
 }
 
 /* Ensure content area properly scrolls */

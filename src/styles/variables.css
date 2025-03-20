@@ -1,67 +1,189 @@
 /* Theme variables and global settings */
 :root {
+  /* Primary color scheme - Simplified to fewer, more consistent black/grey tones */
   --primary-color: #000000;
   --primary-dark: #333333;
   --secondary-color: #666666;
+  --accent-color: #000000; /* New consistent accent color for highlights */
+  
+  /* Background and surface colors */
   --background-color: #ffffff;
+  --surface-color: #f5f5f5; /* For cards and elevated surfaces */
+  --surface-color-elevated: #ffffff; /* For modals and floating elements */
+  
+  /* Text colors - More consistent hierarchy */
   --text-color: #000000;
+  --text-color-secondary: #666666;
+  --text-color-disabled: #999999;
+  --text-color-inverse: #ffffff;
+  
+  /* Border and divider colors */
   --border-color: #e0e0e0;
+  --divider-color: #eeeeee;
+  
+  /* Interactive states */
   --hover-color: #f5f5f5;
+  --active-color: #e5e5e5;
+  --focus-ring-color: rgba(0, 0, 0, 0.2);
+  
+  /* Status colors */
   --success-color: #000000;
   --warning-color: #666666;
   --error-color: #000000;
-  --disabled-color: #cccccc;
-  --icon-color: #555555;
-  --card-background: #ffffff;
-  --input-background: #ffffff;
-  --sidebar-background: #f5f5f5;
-  --warning-background: #fff3cd;
-  --warning-text: #856404;
-  --error-background: #f8d7da;
-  --error-text: #721c24;
-  --shadow-color: rgba(0, 0, 0, 0.1);
+  --info-color: #333333;
+  
+  /* Component-specific colors */
+  --button-background: #000000;
   --button-text-color: #ffffff;
+  --button-border-color: #000000;
+  
+  --input-background: #ffffff;
+  --input-border-color: #e0e0e0;
+  --input-focus-border-color: #000000;
+  
+  --card-background: #ffffff;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  
+  --icon-color: #555555;
+  --icon-color-hover: #000000;
+  
+  /* Sidebar and navigation */
+  --sidebar-background: #f5f5f5;
+  --sidebar-item-hover: #e5e5e5;
+  --sidebar-item-active: #d5d5d5;
   --nav-text-color: #333333;
+  
+  /* Browser UI */
   --browser-tab-active: #ffffff;
   --browser-tab-inactive: #f0f0f0;
   --browser-chrome: #f5f5f5;
   --file-browser-bg: #ffffff;
+  
+  /* Status messages */
+  --warning-background: #fff3cd;
+  --warning-text: #856404;
+  --error-background: #f8d7da;
+  --error-text: #721c24;
+  --success-background: #f0f5f0;
+  --success-text: #155724;
+  --info-background: #e8f4fd;
+  --info-text: #0c5460;
+  
+  /* Shadow colors */
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-color-darker: rgba(0, 0, 0, 0.2);
   
   /* Scrollbar Variables */
   --scrollbar-track-color: transparent;
   --scrollbar-thumb-color: rgba(128, 128, 128, 0);
   --scrollbar-thumb-hover-color: rgba(128, 128, 128, 0.7);
   --scrollbar-thumb-active-color: rgba(128, 128, 128, 0.5);
+  
+  /* Spacing variables for consistency */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  
+  /* Typography */
+  --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family-mono: Consolas, Menlo, Monaco, "Courier New", monospace;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  
+  /* Border radius */
+  --border-radius-sm: 2px;
+  --border-radius-md: 4px;
+  --border-radius-lg: 8px;
+  
+  /* Z-index layers */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
 }
 
 /* Dark theme variables */
 [data-theme="dark"] {
+  /* Primary color scheme */
   --primary-color: #0078d4;
   --primary-dark: #005a9e;
   --secondary-color: #a0a0a0;
+  --accent-color: #0078d4;
+  
+  /* Background and surface colors */
   --background-color: #1e1e1e;
+  --surface-color: #252525;
+  --surface-color-elevated: #333333;
+  
+  /* Text colors */
   --text-color: #e0e0e0;
+  --text-color-secondary: #a0a0a0;
+  --text-color-disabled: #666666;
+  --text-color-inverse: #ffffff;
+  
+  /* Border and divider colors */
   --border-color: #444444;
+  --divider-color: #333333;
+  
+  /* Interactive states */
   --hover-color: #2d2d2d;
+  --active-color: #3d3d3d;
+  --focus-ring-color: rgba(0, 120, 212, 0.4);
+  
+  /* Status colors */
   --success-color: #4caf50;
   --warning-color: #ff9800;
   --error-color: #f44336;
-  --disabled-color: #555555;
-  --icon-color: #a0a0a0;
-  --card-background: #252525;
-  --input-background: #333333;
-  --sidebar-background: #252525;
-  --warning-background: #332b00;
-  --warning-text: #ffda6a;
-  --error-background: #350000;
-  --error-text: #ff6b6b;
-  --shadow-color: rgba(0, 0, 0, 0.3);
+  --info-color: #2196f3;
+  
+  /* Component-specific colors */
+  --button-background: #0078d4;
   --button-text-color: #ffffff;
+  --button-border-color: #0078d4;
+  
+  --input-background: #333333;
+  --input-border-color: #444444;
+  --input-focus-border-color: #0078d4;
+  
+  --card-background: #252525;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  
+  --icon-color: #a0a0a0;
+  --icon-color-hover: #ffffff;
+  
+  /* Sidebar and navigation */
+  --sidebar-background: #252525;
+  --sidebar-item-hover: #333333;
+  --sidebar-item-active: #0078d4;
   --nav-text-color: #e0e0e0;
+  
+  /* Browser UI */
   --browser-tab-active: #252525;
   --browser-tab-inactive: #333333;
   --browser-chrome: #1e1e1e;
   --file-browser-bg: #1e1e1e;
+  
+  /* Status messages */
+  --warning-background: #332b00;
+  --warning-text: #ffda6a;
+  --error-background: #350000;
+  --error-text: #ff6b6b;
+  --success-background: #0b3000;
+  --success-text: #67c23a;
+  --info-background: #001630;
+  --info-text: #61afef;
+  
+  /* Shadow colors */
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --shadow-color-darker: rgba(0, 0, 0, 0.5);
   
   /* Dark Theme Scrollbar Variables */
   --scrollbar-track-color: transparent;
@@ -84,8 +206,7 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--font-family-base);
   margin: 0;
   padding: 0;
   background-color: var(--background-color);
@@ -116,8 +237,8 @@ body {
 
 /* Common font styles */
 .monospace {
-  font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
-  font-size: 13px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
   line-height: 1.5;
 }
 
@@ -211,6 +332,4 @@ body {
 *:focus,
 *:active {
   scrollbar-color: var(--scrollbar-thumb-active-color) var(--scrollbar-track-color);
-}
-
-/* Dark theme adjustments removed - now using CSS variables instead */ 
+} 

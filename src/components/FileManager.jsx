@@ -15,7 +15,10 @@ const FileManager = ({
   canNavigateForward = false,
   breadcrumbs = [],
   currentFilePath,
-  isExpanded = false
+  isExpanded = false,
+  sortOrder,
+  onSortChange,
+  getSortLabel
 }) => {
   const [showCreateFileDialog, setShowCreateFileDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
@@ -23,6 +26,7 @@ const FileManager = ({
   const [newFolderName, setNewFolderName] = useState('');
   const [error, setError] = useState('');
   const [showRecentPanel, setShowRecentPanel] = useState(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   
   const handleCreateFile = () => {
     if (!newFileName.trim()) {
@@ -61,7 +65,7 @@ const FileManager = ({
   
   return (
     <div className="file-manager">
-      <div className="file-manager-header">
+      <div className="file-browser-header">
         <div className="file-manager-actions">
           <div className="file-manager-nav-actions">
             <button 
@@ -101,7 +105,6 @@ const FileManager = ({
             title="Create new file"
           >
             <FilePlus size={16} />
-            <span>New File</span>
           </button>
           
           <button 
@@ -114,32 +117,122 @@ const FileManager = ({
             title="Create new folder"
           >
             <FolderPlus size={16} />
-            <span>New Folder</span>
           </button>
           
           <button
             className="file-manager-action-btn"
             onClick={() => setShowRecentPanel(!showRecentPanel)}
-            title="Recent files"
+            title="Recent files and folders"
           >
-            <File size={16} />
-            <span>Recent</span>
+            <RefreshCw size={16} />
           </button>
         </div>
         
-        <div className="file-manager-breadcrumbs">
-          {breadcrumbs.map((crumb, index) => (
-            <React.Fragment key={index}>
-              {index > 0 && <span className="breadcrumb-separator">/</span>}
-              <button 
-                className={`breadcrumb-item ${crumb.isLast ? 'active' : ''}`}
-                onClick={() => handleBreadcrumbClick(crumb.path)}
-              >
-                {crumb.name}
-              </button>
-            </React.Fragment>
-          ))}
-        </div>
+        {sortOrder && onSortChange && (
+          <div className="sort-dropdown">
+            <button 
+              className="sort-dropdown-button"
+              onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+            >
+              Sort: {getSortLabel ? getSortLabel(sortOrder) : sortOrder}
+            </button>
+            
+            {sortDropdownOpen && (
+              <div className="sort-options">
+                <div 
+                  className={`sort-option ${sortOrder === 'name-asc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('name-asc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Name (A-Z)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'name-desc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('name-desc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Name (Z-A)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'tokens-asc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('tokens-asc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Tokens (Low to High)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'tokens-desc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('tokens-desc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Tokens (High to Low)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'size-asc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('size-asc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Size (Small to Large)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'size-desc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('size-desc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Size (Large to Small)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'date-asc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('date-asc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Date (Oldest First)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'date-desc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('date-desc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Date (Newest First)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'type-asc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('type-asc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Type (A-Z)
+                </div>
+                <div 
+                  className={`sort-option ${sortOrder === 'type-desc' ? 'active' : ''}`}
+                  onClick={() => {
+                    onSortChange('type-desc');
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  Type (Z-A)
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {showCreateFileDialog && (

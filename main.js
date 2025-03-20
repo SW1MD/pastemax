@@ -439,12 +439,32 @@ function createWindow() {
       });
     }, 1000);
   } else {
-    const indexPath = join(__dirname, "dist", "index.html");
-    logWithDetails(`Loading from built files at ${indexPath}`);
-
-    // Use loadURL with file protocol for better path resolution
-    const indexUrl = `file://${indexPath}`;
-    mainWindow.loadURL(indexUrl);
+    // Check all possible paths for index.html, same as in the main load logic
+    const possiblePaths = [
+      join(__dirname, "dist", "index.html"),
+      join(__dirname, "index.html"),
+      join(process.cwd(), "dist", "index.html"),
+      join(process.cwd(), "index.html")
+    ];
+    
+    // Find the first path that exists
+    let validPath = null;
+    for (const path of possiblePaths) {
+      if (existsSync(path)) {
+        validPath = path;
+        logWithDetails(`Found valid index.html at: ${validPath}`);
+        break;
+      }
+    }
+    
+    if (validPath) {
+      // Use loadFile with the resolved path
+      mainWindow.loadFile(validPath);
+    } else {
+      // No valid path found, show error
+      logWithDetails("ERROR: Could not find index.html at any location");
+      mainWindow.loadURL(`data:text/html,<html><body><h1>Error: Could not load application</h1><p>The application files could not be found. Please reinstall the application.</p></body></html>`);
+    }
   }
 
   // Add basic error handling for failed loads
@@ -472,8 +492,14 @@ function createWindow() {
       } else {
         // Retry with explicit file URL
         const indexPath = join(__dirname, "dist", "index.html");
-        const indexUrl = `file://${indexPath}`;
-        mainWindow.loadURL(indexUrl);
+        if (existsSync(indexPath)) {
+          logWithDetails(`Retrying with file: ${indexPath}`);
+          mainWindow.loadFile(indexPath);
+        } else {
+          logWithDetails(`ERROR: index.html not found during retry at ${indexPath}`);
+          // Show an error page
+          mainWindow.loadURL(`data:text/html,<html><body><h1>Error: Could not load application</h1><p>The application files could not be found. Please reinstall the application.</p></body></html>`);
+        }
       }
     },
   );

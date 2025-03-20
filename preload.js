@@ -255,5 +255,29 @@ contextBridge.exposeInMainWorld("electron", {
       // Send the request
       ipcRenderer.send('show-save-dialog');
     });
+  },
+  getFiles: (folderPath) => {
+    return new Promise((resolve, reject) => {
+      // Set up a one-time listener for the response
+      const responseHandler = (_, fileList) => {
+        ipcRenderer.removeListener('file-list-data', responseHandler);
+        resolve(fileList);
+      };
+      
+      // Set up an error listener
+      const errorHandler = (_, response) => {
+        ipcRenderer.removeListener('file-processing-status', errorHandler);
+        if (response.status === 'error') {
+          reject(new Error(response.message || 'Failed to get files'));
+        }
+      };
+      
+      // Listen for the response
+      ipcRenderer.once('file-list-data', responseHandler);
+      ipcRenderer.once('file-processing-status', errorHandler);
+      
+      // Send the request
+      ipcRenderer.send('request-file-list', folderPath);
+    });
   }
 });

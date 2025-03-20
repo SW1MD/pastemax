@@ -39,7 +39,7 @@ const App = () => {
   const [selectedFiles, setSelectedFiles] = useState(
     savedFiles ? JSON.parse(savedFiles) : []
   );
-  const [sortOrder] = useState(savedSortOrder || "tokens-desc");
+  const [sortOrder, setSortOrder] = useState(savedSortOrder || "tokens-desc");
   const [searchTerm, setSearchTerm] = useState(savedSearchTerm || "");
   const [expandedNodes, setExpandedNodes] = useState({});
   const [displayedFiles, setDisplayedFiles] = useState([]);
@@ -142,23 +142,39 @@ const App = () => {
     localStorage.setItem(STORAGE_KEYS.SEARCH_TERM, searchTerm);
   }, [searchTerm]);
 
-  // Load initial data from saved folder
+  // Load files from the selected folder
   useEffect(() => {
-    if (!isElectron || !selectedFolder) return;
-
-    // Use a flag in sessionStorage to ensure we only load data once per session
-    const hasLoadedInitialData = sessionStorage.getItem("hasLoadedInitialData");
-    if (hasLoadedInitialData === "true") return;
-
-    // Removed console.log
-    setProcessingStatus({
-      status: "processing",
-      message: "Loading files from previously selected folder..."
-    });
-    window.electron.ipcRenderer.send("request-file-list", selectedFolder);
-
-    // Mark that we've loaded the initial data
-    sessionStorage.setItem("hasLoadedInitialData", "true");
+    if (selectedFolder && isElectron) {
+      setProcessingStatus({
+        status: "processing",
+        message: "Loading files..."
+      });
+      
+      // Use the Electron API to get files
+      window.electron.getFiles(selectedFolder)
+        .then(files => {
+          console.log(`Loaded ${files.length} files from ${selectedFolder}`);
+          
+          // Process files to add token counts and other metadata
+          const processedFiles = processFiles(files);
+          
+          setAllFiles(processedFiles);
+          setProcessingStatus({
+            status: "idle",
+            message: ""
+          });
+          
+          // Apply filters and sorting
+          applyFiltersAndSort(processedFiles, sortOrder, searchTerm);
+        })
+        .catch(error => {
+          console.error("Error loading files:", error);
+          setProcessingStatus({
+            status: "error",
+            message: `Failed to load files: ${error.message || error}`
+          });
+        });
+    }
   }, [isElectron, selectedFolder]);
 
   // Set up event listeners for file and folder operations
@@ -168,20 +184,19 @@ const App = () => {
     // Set up event listeners
     window.electron.receive('file-created', (result) => {
       if (result.success) {
-        // Removed console.log
-        
         // Add the new file to allFiles
         setAllFiles(prevFiles => [...prevFiles, result.file]);
         
         // Add to recent files
-        const updatedRecentFiles = [result.file.path, ...recentFiles.filter(f => f !== result.file.path)].slice(0, 10);
-        setRecentFiles(updatedRecentFiles);
-        localStorage.setItem('pastemax-recent-files', JSON.stringify(updatedRecentFiles));
+        setRecentFiles(prevRecentFiles => {
+          const updatedRecentFiles = [result.file.path, ...prevRecentFiles.filter(f => f !== result.file.path)].slice(0, 10);
+          localStorage.setItem('pastemax-recent-files', JSON.stringify(updatedRecentFiles));
+          return updatedRecentFiles;
+        });
         
         // Refresh the file list to update the tree
         window.electron.send("request-file-list", selectedFolder);
       } else {
-        // Removed console.error
         setProcessingStatus({
           status: "error",
           message: "Error creating file: " + result.error
@@ -212,12 +227,12 @@ const App = () => {
 
     window.electron.receive('folder-created', (result) => {
       if (result.success) {
-        // Removed console.log
-        
         // Add to recent folders
-        const updatedRecentFolders = [result.path, ...recentFolders.filter(f => f !== result.path)].slice(0, 10);
-        setRecentFolders(updatedRecentFolders);
-        localStorage.setItem('pastemax-recent-folders', JSON.stringify(updatedRecentFolders));
+        setRecentFolders(prevRecentFolders => {
+          const updatedRecentFolders = [result.path, ...prevRecentFolders.filter(f => f !== result.path)].slice(0, 10);
+          localStorage.setItem('pastemax-recent-folders', JSON.stringify(updatedRecentFolders));
+          return updatedRecentFolders;
+        });
         
         // Update current directory to the newly created folder
         setCurrentDirectory(result.path);
@@ -237,7 +252,6 @@ const App = () => {
         // Refresh the file list to update the tree
         window.electron.send("request-file-list", selectedFolder);
       } else {
-        // Removed console.error
         setProcessingStatus({
           status: "error",
           message: "Error creating folder: " + result.error
@@ -350,6 +364,14 @@ const App = () => {
         comparison = a.tokenCount - b.tokenCount;
       } else if (sortKey === "size") {
         comparison = a.size - b.size;
+      } else if (sortKey === "date") {
+        // Sort by last modified date
+        comparison = (a.lastModified || 0) - (b.lastModified || 0);
+      } else if (sortKey === "type") {
+        // Sort by file extension
+        const extA = a.name.split('.').pop().toLowerCase() || '';
+        const extB = b.name.split('.').pop().toLowerCase() || '';
+        comparison = extA.localeCompare(extB);
       }
 
       return sortDir === "asc" ? comparison : -comparison;
@@ -535,6 +557,11 @@ const App = () => {
   };
 
   // Handle sort change
+  const handleSortOrderChange = (newSortOrder) => {
+    setSortOrder(newSortOrder);
+    localStorage.setItem(STORAGE_KEYS.SORT_ORDER, newSortOrder);
+    applyFiltersAndSort(allFiles, newSortOrder, searchTerm);
+  };
 
   // Handle search change
 
@@ -1114,11 +1141,15 @@ const App = () => {
           breadcrumbs={getBreadcrumbs()}
           currentFilePath={viewedFile?.path}
           isExpanded={isExpanded}
+          sortOrder={sortOrder}
+          onSortChange={handleSortOrderChange}
+          getSortLabel={getSortLabel}
         />
+        
         <div className="file-browser">
           {buildFileTree().map(node => renderFileTreeNode(node))}
         </div>
-        
+
         {/* File Selection Counter */}
         <div className="file-selection-counter">
           <span className="counter-label">Selected Files:</span>
@@ -1564,6 +1595,57 @@ const App = () => {
     localStorage.setItem(STORAGE_KEYS.EXPANDED_NODES, JSON.stringify(newExpandedNodes));
   };
 
+  // Helper function to get a human-readable label for the current sort order
+  const getSortLabel = (sortOrder) => {
+    const sortMap = {
+      'name-asc': 'Name (A-Z)',
+      'name-desc': 'Name (Z-A)',
+      'tokens-asc': 'Tokens (Low to High)',
+      'tokens-desc': 'Tokens (High to Low)',
+      'size-asc': 'Size (Small to Large)',
+      'size-desc': 'Size (Large to Small)',
+      'date-asc': 'Date (Oldest First)',
+      'date-desc': 'Date (Newest First)',
+      'type-asc': 'Type (A-Z)',
+      'type-desc': 'Type (Z-A)'
+    };
+    
+    return sortMap[sortOrder] || 'Default';
+  };
+
+  // Process files from Electron
+  const processFiles = (files) => {
+    if (!files || !Array.isArray(files)) {
+      console.error("Invalid files data:", files);
+      return [];
+    }
+    
+    // Process files to add token counts and other metadata
+    const processedFiles = files.map(file => {
+      // Calculate token count if not already present
+      if (file.content && !file.tokenCount) {
+        // Use the existing token count function
+        file.tokenCount = calculateTokenCount(file.content);
+      }
+      
+      // Ensure lastModified is available for date sorting
+      if (!file.lastModified && file.stats && file.stats.mtimeMs) {
+        file.lastModified = file.stats.mtimeMs;
+      }
+      
+      return file;
+    });
+    
+    return processedFiles;
+  };
+
+  // Simple token count calculation (this is a basic implementation)
+  const calculateTokenCount = (text) => {
+    if (!text) return 0;
+    // Simple approximation: split by whitespace and count
+    return text.split(/\s+/).length;
+  };
+
   return (
     <div className="app-container">
       <div className="header">
@@ -1626,13 +1708,7 @@ const App = () => {
             <div className="content-area">
               <div className={`content-header ${activePage === "project" ? 'project-page' : ''}`}>
                 <div className="content-title">
-                  {activePage === "select" && (
-                    <div className="view-dropdown">
-                      <div className="view-dropdown-button">
-                        File Browser
-                      </div>
-                    </div>
-                  )}
+                  {/* File browser dropdown removed */}
                 </div>
                 
                 <div className="content-actions">
