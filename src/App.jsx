@@ -429,60 +429,81 @@ const App = () => {
   const toggleFileSelection = (filePath, nodeData = null) => {
     if (!filePath) return;
     
-    // Get the token count for this file
-    let fileTokens = 0;
+    // First, check if this file is already selected to determine action type
+    const isCurrentlySelected = selectedFiles.includes(filePath);
     
-    // If nodeData is provided, use its tokenCount directly
-    if (nodeData && nodeData.fileData && nodeData.fileData.tokenCount) {
-      fileTokens = nodeData.fileData.tokenCount;
-      console.log(`Using direct token count from node: ${fileTokens}`);
-    } else {
-      // Otherwise, try to find the token count
-      fileTokens = getFileTokenCount(filePath);
+    // Normalize file path to handle different path formats
+    const normalizeFilePath = (path) => {
+      // Replace backslashes with forward slashes for consistency
+      return path.replace(/\\/g, '/');
+    };
+    
+    const normalizedFilePath = normalizeFilePath(filePath);
+    
+    // Find the file object with more flexible matching
+    let file = allFiles.find(f => normalizeFilePath(f.path) === normalizedFilePath);
+    
+    // If not found with exact match, try to match by the filename (last part of path)
+    if (!file) {
+      const fileName = normalizedFilePath.split('/').pop();
+      file = allFiles.find(f => f.name === fileName);
+      console.log(`Trying to find by filename ${fileName}`);
     }
     
-    console.log(`Toggling selection for file: ${filePath}, tokens: ${fileTokens}`);
+    // As a fallback, try to find a file that ends with the same path
+    if (!file && nodeData && nodeData.fileData) {
+      console.log(`Using node data directly as fallback`);
+      file = nodeData.fileData;
+    }
     
-    setSelectedFiles(prev => {
-      // Check if the file is already selected
-      const isCurrentlySelected = prev.includes(filePath);
-      console.log(`File ${filePath} is currently ${isCurrentlySelected ? 'selected' : 'not selected'}`);
+    // Only proceed if we found the file
+    if (!file) {
+      console.error(`File not found: ${filePath}`);
       
-      let newSelectedFiles;
-      if (isCurrentlySelected) {
-        // Remove the file from selection
-        newSelectedFiles = prev.filter(path => path !== filePath);
-        // Decrement counter when removing a file
-        setFileCounter(current => {
-          const newValue = Math.max(0, current - 1);
-          console.log(`File counter: ${current} -> ${newValue}`);
-          return newValue;
-        });
-        // Decrement token counter
-        setTokenCounter(current => {
-          const newValue = Math.max(0, current - fileTokens);
-          console.log(`Token counter: ${current} -> ${newValue}`);
-          return newValue;
-        });
-      } else {
-        // Add the file to selection
-        newSelectedFiles = [...prev, filePath];
-        // Increment counter when adding a file
-        setFileCounter(current => {
-          const newValue = current + 1;
-          console.log(`File counter: ${current} -> ${newValue}`);
-          return newValue;
-        });
-        // Increment token counter
-        setTokenCounter(current => {
-          const newValue = current + fileTokens;
-          console.log(`Token counter: ${current} -> ${newValue}`);
-          return newValue;
-        });
+      // Debug info to help diagnose the issue
+      console.log('Available files:');
+      allFiles.slice(0, 5).forEach(f => console.log(`- ${f.path} (${f.name})`));
+      console.log(`Total files in allFiles: ${allFiles.length}`);
+      
+      return;
+    }
+    
+    // Get the accurate token count from the file object
+    const fileTokens = file.tokenCount || 0;
+    
+    console.log(`Toggling selection for file: ${file.name}, tokens: ${fileTokens}`);
+    console.log(`File ${file.path} is currently ${isCurrentlySelected ? 'selected' : 'not selected'}`);
+    
+    // Update selected files state
+    if (isCurrentlySelected) {
+      // Remove the file from selection
+      setSelectedFiles((prev) => prev.filter(path => path !== filePath));
+      
+      // Only decrement counter for valid files
+      if (!file.isBinary && !file.isSkipped) {
+        console.log(`Decreasing fileCounter from ${fileCounter} to ${fileCounter - 1}`);
+        setFileCounter(current => Math.max(0, current - 1));
+        
+        console.log(`Decreasing tokenCounter from ${tokenCounter} to ${tokenCounter - fileTokens}`);
+        setTokenCounter(current => Math.max(0, current - fileTokens));
+        
+        console.log(`Decremented counters: file: -1, tokens: -${fileTokens}`);
       }
+    } else {
+      // Add the file to selection
+      setSelectedFiles((prev) => [...prev, filePath]);
       
-      return newSelectedFiles;
-    });
+      // Only increment counter for valid files
+      if (!file.isBinary && !file.isSkipped) {
+        console.log(`Increasing fileCounter from ${fileCounter} to ${fileCounter + 1}`);
+        setFileCounter(current => current + 1);
+        
+        console.log(`Increasing tokenCounter from ${tokenCounter} to ${tokenCounter + fileTokens}`);
+        setTokenCounter(current => current + fileTokens);
+        
+        console.log(`Incremented counters: file: +1, tokens: +${fileTokens}`);
+      }
+    }
   };
 
   // Toggle folder selection (select/deselect all files in folder) - fixed for better folder handling
@@ -1096,7 +1117,59 @@ const App = () => {
     );
   };
 
-  // Update the file browser container to use FileManager
+  // Add state for files popover
+  const [showFilesPopover, setShowFilesPopover] = useState(false);
+  const filesPopoverRef = useRef(null);
+
+  // Toggle files popover visibility
+  const toggleFilesPopover = () => {
+    setShowFilesPopover(prev => !prev);
+  };
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filesPopoverRef.current && !filesPopoverRef.current.contains(event.target)) {
+        setShowFilesPopover(false);
+      }
+    };
+
+    if (showFilesPopover) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilesPopover]);
+
+  // Get list of selected file names
+  const getSelectedFilesList = () => {
+    // Create a Map to track unique files by path to prevent duplicates
+    const uniqueFiles = new Map();
+    
+    // Only return the files that are actually being counted in fileCounter
+    selectedFiles.forEach(path => {
+      const file = allFiles.find(f => f.path === path);
+      // Only include files that are valid (not binary, not skipped)
+      if (file && !file.isBinary && !file.isSkipped && !uniqueFiles.has(path)) {
+        uniqueFiles.set(path, {
+          name: file.name,
+          path: file.path,
+          tokenCount: file.tokenCount || 0
+        });
+      }
+    });
+    
+    // Convert Map values to array and sort
+    return Array.from(uniqueFiles.values())
+      .sort((a, b) => {
+        // Sort by token count (largest first)
+        return b.tokenCount - a.tokenCount;
+      });
+  };
+
+  // Update the renderFileBrowser function
   const renderFileBrowser = () => {
     // Check if most folders are expanded or collapsed
     const expandedCount = Object.values(expandedNodes).filter(Boolean).length;
@@ -1152,8 +1225,36 @@ const App = () => {
 
         {/* File Selection Counter */}
         <div className="file-selection-counter">
-          <span className="counter-label">Selected Files:</span>
-          <span className="counter-value">{fileCounter}</span>
+          <div className="files-counter-label" onClick={toggleFilesPopover}>
+            <span className="counter-label">Selected Files:</span>
+            <span className="counter-value">{fileCounter}</span>
+          </div>
+          
+          {showFilesPopover && (
+            <div className="selected-files-popover" ref={filesPopoverRef}>
+              <div className="popover-header">
+                <h3>Selected Files</h3>
+                <button 
+                  className="close-popover-btn"
+                  onClick={() => setShowFilesPopover(false)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="selected-files-list">
+                {getSelectedFilesList().length > 0 ? (
+                  getSelectedFilesList().map((file, index) => (
+                    <div key={index} className="selected-file-item">
+                      <span className="selected-file-name">{file.name}</span>
+                      <span className="selected-file-tokens">{file.tokenCount.toLocaleString()} tokens</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-files-message">No files selected</div>
+                )}
+              </div>
+            </div>
+          )}
           
           <span className="token-counter">
             <span className="counter-label">Total Tokens:</span>
@@ -1495,7 +1596,7 @@ const App = () => {
     console.log('Saving selectedFiles to localStorage:', selectedFiles);
     localStorage.setItem(STORAGE_KEYS.SELECTED_FILES, JSON.stringify(selectedFiles));
     
-    // Sync selections with renderer process
+    // Sync selections with renderer process - but don't update counters again
     if (window.electron) {
       window.electron.send("update-selected-files", selectedFiles);
     }
@@ -1510,21 +1611,47 @@ const App = () => {
     if (window.electron) {
       const handleSelectionUpdate = (files) => {
         // Only update if the selection is different to avoid loops
-        if (JSON.stringify(files) !== JSON.stringify(selectedFiles)) {
+        const currentSelectionStr = JSON.stringify([...selectedFiles].sort());
+        const newSelectionStr = JSON.stringify([...files].sort());
+        
+        if (currentSelectionStr !== newSelectionStr) {
+          // Only update the selected files array, NOT the counters
+          // This avoids double-counting when syncing between processes
+          console.log('Received selection update from renderer, updating selection only');
           setSelectedFiles(files);
+          
+          // We need to reset and recalculate counters manually here to avoid double-counting
+          let validCount = 0;
+          let tokenCount = 0;
+          
+          // Calculate valid selected files and their token counts
+          files.forEach(path => {
+            const file = allFiles.find(f => f.path === path);
+            if (file && !file.isBinary && !file.isSkipped) {
+              validCount++;
+              tokenCount += file.tokenCount || 0;
+            }
+          });
+          
+          console.log(`Setting counters directly: files=${validCount}, tokens=${tokenCount}`);
+          setFileCounter(validCount);
+          setTokenCounter(tokenCount);
         }
       };
       
       window.electron.receive("selected-files-updated", handleSelectionUpdate);
+      
+      return () => {
+        // The cleanup function now safely removes listeners
+        if (window.electron && window.electron.removeAllListeners) {
+          window.electron.removeAllListeners("selected-files-updated");
+        }
+      };
     }
     
-    return () => {
-      // The cleanup function now safely removes listeners
-      if (window.electron && window.electron.removeAllListeners) {
-        window.electron.removeAllListeners("selected-files-updated");
-      }
-    };
-  }, [selectedFiles]);
+    // Empty return for the case when window.electron is not available
+    return () => {};
+  }, [selectedFiles, allFiles]);
 
   // Helper function to count valid selected files
   const getValidSelectedCount = () => {

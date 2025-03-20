@@ -691,6 +691,20 @@
   background-color: var(--card-background);
   border-top: 1px solid var(--border-color);
   font-size: 14px;
+  position: relative;
+}
+
+.files-counter-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.files-counter-label:hover {
+  background-color: var(--hover-color);
 }
 
 .counter-label {
@@ -708,6 +722,100 @@
   font-weight: bold;
   min-width: 24px;
   text-align: center;
+}
+
+/* Selected files popover styles */
+.selected-files-popover {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 300px;
+  background-color: var(--surface-color-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 -2px 10px var(--shadow-color);
+  z-index: var(--z-index-popover);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--surface-color);
+}
+
+.popover-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.close-popover-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--text-color-secondary);
+  border-radius: 50%;
+}
+
+.close-popover-btn:hover {
+  background-color: var(--hover-color);
+  color: var(--text-color);
+}
+
+.selected-files-list {
+  overflow-y: auto;
+  max-height: 250px;
+  padding: 8px 0;
+}
+
+.selected-file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--divider-color);
+  font-size: 13px;
+  transition: background-color 0.2s ease;
+}
+
+.selected-file-item:last-child {
+  border-bottom: none;
+}
+
+.selected-file-item:hover {
+  background-color: var(--hover-color);
+}
+
+.selected-file-name {
+  font-family: var(--font-family-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+  color: var(--text-color);
+}
+
+.selected-file-tokens {
+  color: var(--text-color-secondary);
+  font-size: 12px;
+}
+
+.no-files-message {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-color-secondary);
+  font-style: italic;
 }
 
 .counter-clear-btn {
