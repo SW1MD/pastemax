@@ -1,6 +1,6 @@
 import React, { useState, useEffect, MouseEventHandler } from "react";
 import { SidebarProps } from "../types/FileTypes";
-import { ChevronLeft, ChevronRight, FileText, Edit, Settings, MessageSquare, Folder } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Edit, Settings, MessageSquare, Folder, MoreVertical } from "lucide-react";
 
 const Sidebar = ({
   collapsed,
@@ -8,12 +8,12 @@ const Sidebar = ({
   activePage = "select",
   setActivePage = () => {},
 }: SidebarProps) => {
-  const [sidebarWidth, setSidebarWidth] = useState(150);
+  const [sidebarWidth, setSidebarWidth] = useState(220);
   const [isResizing, setIsResizing] = useState(false);
 
   // Minimum and maximum sidebar widths
-  const MIN_SIDEBAR_WIDTH = 100;
-  const MAX_SIDEBAR_WIDTH = 250;
+  const MIN_SIDEBAR_WIDTH = 180;
+  const MAX_SIDEBAR_WIDTH = 320;
 
   // Handle mouse down for resizing
   const handleResizeStart = () => {
@@ -50,33 +50,50 @@ const Sidebar = ({
     { id: 'prompt', label: 'Prompt', icon: <MessageSquare size={20} /> },
     { id: 'select', label: 'Select', icon: <FileText size={20} /> },
     { id: 'edit', label: 'Edit', icon: <Edit size={20} /> },
-    { id: 'history', label: 'History', icon: <ChevronLeft size={20} /> },
     { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
   ];
 
   return (
     <div 
       className={`sidebar ${collapsed ? 'collapsed' : ''}`} 
-      style={{ width: collapsed ? '50px' : `${sidebarWidth}px` }}
+      style={{ width: collapsed ? '60px' : `${sidebarWidth}px` }}
     >
-      {/* Collapse toggle button */}
-      <div className="sidebar-collapse-toggle" onClick={toggleCollapsed}>
-        {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+      {/* App logo/branding */}
+      <div className="sidebar-brand" onClick={toggleCollapsed} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+        {collapsed ? (
+          <span className="brand-icon">P</span>
+        ) : (
+          <span className="brand-name">PasteMax</span>
+        )}
       </div>
       
-      {/* Navigation - added margin-top to move it down */}
-      <div className="sidebar-nav" style={{ marginTop: '40px' }}>
+      {/* Navigation */}
+      <div className="sidebar-nav">
         {navItems.map(item => (
           <div 
             key={item.id}
             className={`nav-item ${activePage === item.id ? 'active' : ''}`}
             onClick={() => setActivePage(item.id)}
-            title={item.label}
+            title={collapsed ? item.label : undefined}
           >
             <div className="nav-icon">{item.icon}</div>
             {!collapsed && <div className="nav-label">{item.label}</div>}
+            {!collapsed && activePage === item.id && <div className="nav-active-indicator"></div>}
           </div>
         ))}
+      </div>
+      
+      {/* Bottom actions */}
+      <div className="sidebar-footer">
+        <div className="sidebar-collapse-toggle" onClick={toggleCollapsed} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </div>
+        
+        {!collapsed && (
+          <div className="sidebar-more-options" title="More options">
+            <MoreVertical size={18} />
+          </div>
+        )}
       </div>
       
       {!collapsed && (

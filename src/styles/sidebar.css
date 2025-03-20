@@ -3,126 +3,201 @@
 /* Left sidebar styles */
 .sidebar {
   background-color: var(--sidebar-background);
-  width: 250px;
+  width: 220px;
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  transition: none; /* Remove width transition */
+  transition: width 0.2s ease-in-out;
   z-index: 10;
   flex-shrink: 0;
   border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar.collapsed {
-  width: 50px;
+  width: 60px;
   overflow: visible;
 }
 
-.sidebar-header {
-  padding: 12px 16px;
+/* Sidebar brand/logo */
+.sidebar-brand {
+  padding: 20px 16px;
   border-bottom: 1px solid var(--border-color);
-}
-
-.sidebar-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-color);
-  margin: 0;
-}
-
-.sidebar-folder-path {
-  font-size: 12px;
-  color: var(--secondary-color);
-  margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidebar-search {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.sidebar-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.sidebar-action-btn {
-  background: none;
-  border: none;
+  justify-content: flex-start;
+  height: 64px;
   cursor: pointer;
-  color: var(--icon-color);
+  transition: background-color 0.2s ease;
 }
 
-.file-tree {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
+.sidebar-brand:hover {
+  background-color: var(--sidebar-item-hover);
 }
 
-.tree-empty {
+.brand-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+  letter-spacing: 0.5px;
+}
+
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  background-color: var(--primary-color);
+  color: var(--text-color-inverse);
+  border-radius: var(--border-radius-md);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  color: var(--secondary-color);
-  padding: 16px;
-  text-align: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Allow brand icon to show the clickable hand pointer */
+.sidebar.collapsed .brand-icon {
+  cursor: pointer;
 }
 
 /* Navigation item styles */
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  position: relative;
+  padding: 10px 16px;
   cursor: pointer;
   color: var(--nav-text-color);
   text-decoration: none;
-  transition: background-color 0.2s;
-  font-size: 14px;
-  border-left: 3px solid transparent;
+  transition: all 0.2s;
+  margin: 4px 0;
+  border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
 }
 
-.nav-item svg {
-  margin-right: 12px;
-  width: 18px;
-  height: 18px;
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--border-radius-md);
+  transition: all 0.15s ease;
 }
 
-.nav-item span {
-  overflow: hidden;
+.nav-label {
+  margin-left: 12px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-item:hover {
-  background-color: var(--hover-color);
+  background-color: var(--sidebar-item-hover);
 }
 
 .nav-item.active {
-  background-color: var(--hover-color);
-  border-left-color: var(--primary-color);
-  font-weight: 500;
+  background-color: var(--sidebar-item-active);
+  color: var(--text-color);
+}
+
+.nav-item.active .nav-icon {
+  color: var(--primary-color);
+}
+
+.nav-active-indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background-color: var(--primary-color);
+  border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
 }
 
 /* Collapsed sidebar special styles */
 .sidebar.collapsed .nav-item {
-  padding: 12px;
+  padding: 10px 16px;
   justify-content: center;
 }
 
-.sidebar.collapsed .nav-item span {
-  display: none;
+.sidebar.collapsed .nav-item .nav-icon {
+  margin-right: 0;
 }
 
-.sidebar.collapsed .nav-item svg {
-  margin-right: 0;
+/* Sidebar footer */
+.sidebar-footer {
+  display: flex;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  color: var(--nav-text-color);
+  transition: all 0.15s ease;
+}
+
+.sidebar-collapse-toggle:hover {
+  background-color: var(--sidebar-item-hover);
+  color: var(--text-color);
+}
+
+.sidebar-more-options {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  color: var(--nav-text-color);
+  transition: all 0.15s ease;
+}
+
+.sidebar-more-options:hover {
+  background-color: var(--sidebar-item-hover);
+  color: var(--text-color);
+}
+
+.sidebar.collapsed .sidebar-collapse-toggle {
+  margin: 0 auto;
+}
+
+/* Resize handle */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 11;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:active {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 /* Tree loading styles */
@@ -341,50 +416,6 @@
 
 .search-clear-btn:hover {
   background-color: var(--hover-color);
-}
-
-.sidebar-resize-handle {
-  position: absolute;
-  top: 0;
-  right: -5px;
-  width: 10px;
-  height: 100%;
-  cursor: col-resize;
-  z-index: 10;
-  opacity: 0;
-}
-
-.sidebar-resize-handle:hover,
-.sidebar-resize-handle:active {
-  opacity: 1;
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-/* Sidebar collapse toggle */
-.sidebar-collapse-toggle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--hover-color);
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--icon-color);
-  transition: all 0.2s ease;
-  z-index: 10;
-}
-
-.sidebar-collapse-toggle:hover {
-  background-color: var(--border-color);
-  color: var(--primary-color);
-}
-
-.sidebar.collapsed .sidebar-collapse-toggle {
-  right: 10px;
 }
 
 /* Tree Item Styles */
