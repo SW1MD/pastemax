@@ -575,9 +575,9 @@
 
 .file-manager-actions {
   display: flex;
-  gap: 8px;
-  flex-wrap: nowrap;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .file-manager-nav-actions {
@@ -923,131 +923,130 @@
   height: 100%;
   width: 100%;
   position: relative;
+  flex: 1;
+  overflow: hidden;
+  background-color: var(--background-color);
 }
 
-/* New File Form Styles */
-.new-file-form {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 400px;
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
   background-color: var(--card-background);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 20px var(--shadow-color);
-  z-index: 1000;
-}
-
-.new-file-form-header {
-  padding: 16px;
   border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
-.new-file-form-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+.editor-header .file-name {
+  font-weight: bold;
+  font-size: 16px;
   color: var(--text-color);
 }
 
-.new-file-form-content {
-  padding: 16px;
+.editor-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100% - 50px);
 }
 
-.new-file-form-field {
-  margin-bottom: 16px;
+/* Fix monaco editor container to make it visible */
+.editor-page .code-editor-container {
+  height: 100% !important;
+  flex: 1 !important;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--background-color);
 }
 
-.new-file-form-field label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--text-color);
+.monaco-editor-container {
+  height: 100% !important;
+  width: 100% !important;
+  flex: 1;
+  min-height: 300px;
 }
 
-.new-file-form-field input {
+/* Monaco specific fixes */
+.monaco-editor, 
+.monaco-editor .overflow-guard,
+.monaco-editor-background {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Added specific styles for the full-height editor container */
+.full-height-editor-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px) !important;
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background-color: var(--input-background);
-  color: var(--text-color);
-  font-size: 14px;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--background-color);
 }
 
-.new-file-form-field input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-.new-file-form-error {
-  color: var(--error-color);
-  background-color: var(--error-background);
-  padding: 8px 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-
-.new-file-form-location {
+/* Back button style */
+.editor-back-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 8px 12px;
-  background-color: var(--hover-color);
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.new-file-path {
-  font-weight: 500;
-  color: var(--text-color);
-  word-break: break-all;
-}
-
-.new-file-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.save-btn {
-  padding: 8px 16px;
+  justify-content: center;
+  padding: 6px 10px;
   background-color: var(--primary-color);
-  border: 1px solid var(--primary-color);
+  border: none;
   border-radius: 4px;
-  color: var(--button-text-color);
-  font-weight: 500;
+  color: white;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  margin-right: 12px;
+  transition: background-color 0.2s;
 }
 
-.save-btn:hover {
+.editor-back-btn:hover {
   background-color: var(--primary-dark);
 }
 
-/* Backdrop for modal forms */
-.form-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
+/* Save button style */
+.editor-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-/* Media queries for responsive design */
-@media (max-width: 576px) {
-  .new-file-form {
-    width: 90%;
-    max-width: 400px;
-  }
+.editor-save-btn:hover {
+  background-color: var(--primary-dark);
+}
+
+/* Close button style */
+.editor-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.editor-close-btn:hover {
+  background-color: var(--hover-color);
+  color: var(--primary-color);
 }
 
 .sort-dropdown {
@@ -1080,4 +1079,49 @@
   color: var(--text-color);
   background-color: var(--background-color);
   opacity: 0.8;
+}
+
+.current-file-display {
+  margin: 0 12px;
+  padding: 6px 12px;
+  background-color: var(--card-background);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+}
+
+.current-file-name, .current-directory-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+/* Fix MonacoEditor height */
+.monaco-editor {
+  height: 100% !important;
+  min-height: 200px;
+}
+
+.monaco-editor .overflow-guard {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.monaco-editor-background {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Make sure the editor content area has a proper height */
+.full-height-editor-container .code-editor-content {
+  flex: 1;
+  min-height: 400px;
+  display: flex;
+  position: relative;
+  overflow: hidden;
 } 

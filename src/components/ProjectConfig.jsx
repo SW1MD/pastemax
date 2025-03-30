@@ -14,10 +14,6 @@ const ProjectConfig = () => {
     linter: 'none',
     formatter: 'none',
     typescript: false,
-    git: true,
-    gitInit: true,
-    gitIgnore: true,
-    envVars: {},
     cssFramework: 'none',
     stateManagement: 'none',
     customFramework: '',
@@ -27,7 +23,6 @@ const ProjectConfig = () => {
     customStateManagement: '',
   });
 
-  const [newEnvVar, setNewEnvVar] = useState({ key: '', value: '' });
   const [saveStatus, setSaveStatus] = useState({ message: '', type: '' });
 
   // Define build commands for each project type
@@ -319,27 +314,6 @@ const ProjectConfig = () => {
     });
   };
 
-  const handleEnvVarAdd = () => {
-    if (newEnvVar.key && newEnvVar.value) {
-      setConfig(prev => ({
-        ...prev,
-        envVars: {
-          ...prev.envVars,
-          [newEnvVar.key]: newEnvVar.value
-        }
-      }));
-      setNewEnvVar({ key: '', value: '' });
-    }
-  };
-
-  const handleEnvVarRemove = (key) => {
-    setConfig(prev => {
-      const newEnvVars = { ...prev.envVars };
-      delete newEnvVars[key];
-      return { ...prev, envVars: newEnvVars };
-    });
-  };
-
   const handleSubmit = async () => {
     setSaveStatus({ message: 'Saving...', type: 'info' });
 
@@ -486,64 +460,6 @@ const ProjectConfig = () => {
                 placeholder={buildCommands[config.projectType].output}
               />
             </label>
-          </div>
-
-          <div className="config-section">
-            <h3>Git Configuration</h3>
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                name="git"
-                checked={config.git}
-                onChange={handleChange}
-              />
-              Initialize Git Repository
-            </label>
-
-            {config.git && (
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  name="gitIgnore"
-                  checked={config.gitIgnore}
-                  onChange={handleChange}
-                />
-                Create .gitignore
-              </label>
-            )}
-          </div>
-
-          <div className="config-section">
-            <h3>Environment Variables</h3>
-            <div className="env-vars">
-              {Object.entries(config.envVars).map(([key, value]) => (
-                <div key={key} className="env-var-item">
-                  <span>{key}={value}</span>
-                  <button
-                    type="button"
-                    className="remove-env-var"
-                    onClick={() => handleEnvVarRemove(key)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <div className="add-env-var">
-                <input
-                  type="text"
-                  placeholder="KEY"
-                  value={newEnvVar.key}
-                  onChange={(e) => setNewEnvVar(prev => ({ ...prev, key: e.target.value }))}
-                />
-                <input
-                  type="text"
-                  placeholder="VALUE"
-                  value={newEnvVar.value}
-                  onChange={(e) => setNewEnvVar(prev => ({ ...prev, value: e.target.value }))}
-                />
-                <button type="button" onClick={handleEnvVarAdd}>Add</button>
-              </div>
-            </div>
           </div>
         </div>
       </form>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FilePlus, FolderPlus, X, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Folder, FolderOpen, File, RefreshCw } from 'lucide-react';
+import { FilePlus, FolderPlus, X, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Folder, FolderOpen, File, RefreshCw, CheckSquare, XSquare } from 'lucide-react';
 
 const FileManager = ({ 
   currentDirectory, 
@@ -18,7 +18,11 @@ const FileManager = ({
   isExpanded = false,
   sortOrder,
   onSortChange,
-  getSortLabel
+  getSortLabel,
+  onSelectAll,
+  onDeselectAll,
+  isNewFile = false,
+  fileName = ''
 }) => {
   const [showCreateFileDialog, setShowCreateFileDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
@@ -60,6 +64,12 @@ const FileManager = ({
 
   const handleBreadcrumbClick = (path) => {
     const isFolder = path !== currentFilePath;
+    onNavigate(path, isFolder);
+  };
+
+  // Handle file opening
+  const handleNodeClick = (path, isFolder = false) => {
+    // Pass back to parent component
     onNavigate(path, isFolder);
   };
   
@@ -126,6 +136,35 @@ const FileManager = ({
           >
             <RefreshCw size={16} />
           </button>
+          
+          <div className="file-manager-separator"></div>
+          
+          <button
+            className="file-manager-action-btn"
+            onClick={onSelectAll}
+            title="Select All"
+          >
+            <CheckSquare size={16} />
+          </button>
+          
+          <button
+            className="file-manager-action-btn"
+            onClick={onDeselectAll}
+            title="Deselect All"
+          >
+            <XSquare size={16} />
+          </button>
+        </div>
+        
+        {/* Current file or directory display */}
+        <div className="current-file-display">
+          {isNewFile ? (
+            <span className="current-file-name">New File</span>
+          ) : currentFilePath ? (
+            <span className="current-file-name">{currentFilePath.split('/').pop()}</span>
+          ) : (
+            <span className="current-directory-name">{currentDirectory.split('/').pop() || 'Root'}</span>
+          )}
         </div>
         
         {sortOrder && onSortChange && (

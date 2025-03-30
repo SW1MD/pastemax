@@ -938,6 +938,11 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     // Log the selectedFiles for debugging
     console.log('generatePreviewContent using internalSelectedFiles:', internalSelectedFiles);
     
+    // Normalize path function for consistent display
+    const normalizeFilePath = (path) => {
+      return path.replace(/\\/g, '/');
+    };
+    
     let previewPrompt = '';
     
     if (projectConfig) {
@@ -1001,7 +1006,7 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
       
       previewPrompt += 'Project Paths:\n';
       internalSelectedFiles.forEach(file => {
-        previewPrompt += `- ${file.path}\n`;
+        previewPrompt += `- ${normalizeFilePath(file.path)}\n`;
       });
     } else if (promptOptions.includeProjectPaths) {
       // If option is checked but no files are selected
@@ -1020,14 +1025,14 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
       
       previewPrompt += 'Selected Files:\n';
       internalSelectedFiles.forEach(file => {
-        previewPrompt += `- ${file.path}\n`;
+        previewPrompt += `- ${normalizeFilePath(file.path)}\n`;
       });
       
       // Add file contents if there are fewer than 5 files
       if (internalSelectedFiles.length <= 5) {
         previewPrompt += '\nFile Contents:\n';
         internalSelectedFiles.forEach(file => {
-          previewPrompt += `\n--- ${file.path} ---\n`;
+          previewPrompt += `\n--- ${normalizeFilePath(file.path)} ---\n`;
           previewPrompt += `${file.content || 'Content not available'}\n`;
         });
       } else {

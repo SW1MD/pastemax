@@ -7,8 +7,10 @@ import PromptEngine from './components/PromptEngine';
 import EditorPage from './components/EditorPage';
 import FileManager from './components/FileManager';
 import ProjectConfig from './components/ProjectConfig';
+import CodeEditor from './components/CodeEditor';
 import './styles/settings.css';
 import './styles/checkbox-override.css';
+import Editor from '@monaco-editor/react';
 
 // Keys for localStorage
 const STORAGE_KEYS = {
@@ -82,6 +84,20 @@ const App = () => {
   const [fileCounter, setFileCounter] = useState(0);
   // New token counter state that starts at 0
   const [tokenCounter, setTokenCounter] = useState(0);
+  
+  // History of recently viewed files
+  const [fileHistory, setFileHistory] = useState([]);
+  // Recent files and folders for quick access
+  const [recentFiles, setRecentFiles] = useState(() => {
+    const savedRecentFiles = localStorage.getItem('pastemax-recent-files');
+    return savedRecentFiles ? JSON.parse(savedRecentFiles) : [];
+  });
+  const [recentFolders, setRecentFolders] = useState(() => {
+    const savedRecentFolders = localStorage.getItem('pastemax-recent-folders');
+    return savedRecentFolders ? JSON.parse(savedRecentFolders) : [];
+  });
+  // Current directory for file operations
+  const [currentDirectory, setCurrentDirectory] = useState(savedFolder || '');
 
   // Check if we're running in Electron or browser environment
   const isElectron = window.electron !== undefined;
@@ -425,9 +441,6 @@ const App = () => {
   const toggleFileSelection = (filePath, nodeData = null) => {
     if (!filePath) return;
     
-    // First, check if this file is already selected to determine action type
-    const isCurrentlySelected = selectedFiles.includes(filePath);
-    
     // Normalize file path to handle different path formats
     const normalizeFilePath = (path) => {
       // Replace backslashes with forward slashes for consistency
@@ -435,6 +448,10 @@ const App = () => {
     };
     
     const normalizedFilePath = normalizeFilePath(filePath);
+    
+    // First, check if this file is already selected to determine action type
+    // Use normalized path for comparison
+    const isCurrentlySelected = selectedFiles.some(path => normalizeFilePath(path) === normalizedFilePath);
     
     // Find the file object with more flexible matching
     let file = allFiles.find(f => normalizeFilePath(f.path) === normalizedFilePath);
@@ -472,8 +489,8 @@ const App = () => {
     
     // Update selected files state
     if (isCurrentlySelected) {
-      // Remove the file from selection
-      setSelectedFiles((prev) => prev.filter(path => path !== filePath));
+      // Remove the file from selection - using normalized paths
+      setSelectedFiles((prev) => prev.filter(path => normalizeFilePath(path) !== normalizedFilePath));
       
       // Only decrement counter for valid files
       if (!file.isBinary && !file.isSkipped) {
@@ -486,8 +503,8 @@ const App = () => {
         console.log(`Decremented counters: file: -1, tokens: -${fileTokens}`);
       }
     } else {
-      // Add the file to selection
-      setSelectedFiles((prev) => [...prev, filePath]);
+      // Add the normalized file path to selection
+      setSelectedFiles((prev) => [...prev, normalizedFilePath]);
       
       // Only increment counter for valid files
       if (!file.isBinary && !file.isSkipped) {
@@ -506,25 +523,37 @@ const App = () => {
   const toggleFolderSelection = (folderPath, isSelected) => {
     console.log(`Toggle folder selection: ${folderPath}, isSelected: ${isSelected}`);
     
+    // Normalize folder path
+    const normalizeFilePath = (path) => {
+      return path.replace(/\\/g, '/');
+    };
+    
+    const normalizedFolderPath = normalizeFilePath(folderPath);
+    
     // Get all files in this folder and subfolders that are valid (not binary/skipped)
     const filesInFolder = allFiles.filter(
-      (file) =>
-        (file.path.startsWith(folderPath + "/") || file.path === folderPath) && 
-        !file.isBinary && 
-        !file.isSkipped
+      (file) => {
+        const normalizedFilePath = normalizeFilePath(file.path);
+        return (normalizedFilePath.startsWith(normalizedFolderPath + "/") || 
+                normalizedFilePath === normalizedFolderPath) && 
+               !file.isBinary && 
+               !file.isSkipped;
+      }
     );
     
     console.log(`Found ${filesInFolder.length} valid files in folder ${folderPath}`);
 
-    // Get all file paths in this folder
-    const filePaths = filesInFolder.map(file => file.path);
+    // Get all normalized file paths in this folder
+    const filePaths = filesInFolder.map(file => normalizeFilePath(file.path));
     
     setSelectedFiles(prev => {
+      // Normalize all paths in the previous selection
+      const normalizedPrev = prev.map(path => normalizeFilePath(path));
       let newSelection;
       
       if (isSelected) {
         // Add all files to selection
-        newSelection = [...prev];
+        newSelection = [...normalizedPrev];
         let addedCount = 0;
         let addedTokens = 0;
         
@@ -534,7 +563,7 @@ const App = () => {
             addedCount++;
             
             // Add tokens for this file
-            const file = allFiles.find(f => f.path === path);
+            const file = allFiles.find(f => normalizeFilePath(f.path) === path);
             if (file) {
               addedTokens += file.tokenCount || 0;
             }
@@ -547,16 +576,16 @@ const App = () => {
         setFileCounter(current => current + addedCount);
         setTokenCounter(current => current + addedTokens);
       } else {
-        // Remove all files in this folder from selection
-        const removedPaths = prev.filter(path => filePaths.includes(path));
-        newSelection = prev.filter(path => !filePaths.includes(path));
+        // Remove all files in this folder from selection - comparing normalized paths
+        const removedPaths = normalizedPrev.filter(path => filePaths.includes(path));
+        newSelection = normalizedPrev.filter(path => !filePaths.includes(path));
         
         let removedCount = removedPaths.length;
         let removedTokens = 0;
         
         // Calculate removed tokens
         removedPaths.forEach(path => {
-          const file = allFiles.find(f => f.path === path);
+          const file = allFiles.find(f => normalizeFilePath(f.path) === path);
           if (file) {
             removedTokens += file.tokenCount || 0;
           }
@@ -621,63 +650,34 @@ const App = () => {
       return "No files selected.";
     }
     
-    // Get the files that are actually selected (counted in fileCounter)
-    const actuallySelectedFiles = [];
-    
-    // Iterate through the file tree to find selected files
-    const findSelectedFilesInTree = (nodes) => {
-      for (const node of nodes) {
-        if (node.type === "file" && selectedFiles.includes(node.path)) {
-          if (node.fileData) {
-            actuallySelectedFiles.push(node.fileData);
-          }
-        }
-        if (node.children && Object.keys(node.children).length > 0) {
-          findSelectedFilesInTree(Object.values(node.children));
-        }
-      }
+    // Normalize path function
+    const normalizeFilePath = (path) => {
+      return path.replace(/\\/g, '/');
     };
     
-    // Find selected files in the tree
-    findSelectedFilesInTree(buildFileTree());
-    
-    // If no files were found, try to use the selectedFiles array directly
-    if (actuallySelectedFiles.length === 0) {
-      console.log("No files found in tree, using selectedFiles directly");
-      // Sort selected files according to current sort order
-      const [sortKey, sortDir] = sortOrder.split("-");
-      const sortedSelected = allFiles
-        .filter((file) => selectedFiles.includes(file.path))
-        .sort((a, b) => {
-          let comparison = 0;
-
-          if (sortKey === "name") {
-            comparison = a.name.localeCompare(b.name);
-          } else if (sortKey === "tokens") {
-            comparison = a.tokenCount - b.tokenCount;
-          } else if (sortKey === "size") {
-            comparison = a.size - b.size;
-          }
-
-          return sortDir === "asc" ? comparison : -comparison;
-        });
-
-      if (sortedSelected.length === 0) {
-        return "No files selected.";
+    // Map of normalized paths to file objects for quick lookup
+    const filePathMap = new Map();
+    allFiles.forEach(file => {
+      if (!file.isBinary && !file.isSkipped) {
+        filePathMap.set(normalizeFilePath(file.path), file);
       }
-
-      let concatenatedString = "";
-      sortedSelected.forEach((file) => {
-        concatenatedString += `\n\n// ---- File: ${file.path} ----\n\n`;
-        concatenatedString += file.content;
-      });
-
-      return concatenatedString;
+    });
+    
+    // Get the normalized selected paths
+    const normalizedSelectedPaths = selectedFiles.map(path => normalizeFilePath(path));
+    
+    // Get all selected files by directly looking them up in allFiles
+    const allSelectedFiles = normalizedSelectedPaths
+      .map(path => filePathMap.get(path))
+      .filter(Boolean);
+    
+    if (allSelectedFiles.length === 0) {
+      return "No files found in selection for copying.";
     }
     
-    // Sort the actually selected files
+    // Sort the selected files according to the current sort order
     const [sortKey, sortDir] = sortOrder.split("-");
-    actuallySelectedFiles.sort((a, b) => {
+    allSelectedFiles.sort((a, b) => {
       let comparison = 0;
 
       if (sortKey === "name") {
@@ -693,17 +693,53 @@ const App = () => {
     
     // Concatenate the content of the selected files
     let concatenatedString = "";
-    actuallySelectedFiles.forEach((file) => {
+    allSelectedFiles.forEach((file) => {
       concatenatedString += `\n\n// ---- File: ${file.path} ----\n\n`;
       concatenatedString += file.content;
     });
-
+    
     return concatenatedString;
   };
 
   // Handle select all files
+  const selectAllFiles = () => {
+    // Define path normalization function
+    const normalizeFilePath = (path) => {
+      return path.replace(/\\/g, '/');
+    };
+    
+    // Get all valid files (not binary/skipped)
+    const validFiles = allFiles.filter(file => !file.isBinary && !file.isSkipped);
+    
+    if (validFiles.length === 0) return;
+    
+    // Get file paths of all valid files with normalized paths
+    const validFilePaths = validFiles.map(file => normalizeFilePath(file.path));
+    
+    // Calculate total tokens
+    const totalTokens = validFiles.reduce((sum, file) => sum + (file.tokenCount || 0), 0);
+    
+    // Update selected files state with normalized paths
+    setSelectedFiles(validFilePaths);
+    
+    // Update counters
+    setFileCounter(validFiles.length);
+    setTokenCounter(totalTokens);
+    
+    console.log(`Selected all ${validFiles.length} files with ${totalTokens} tokens`);
+  };
 
   // Handle deselect all files
+  const deselectAllFiles = () => {
+    // Clear selected files
+    setSelectedFiles([]);
+    
+    // Reset counters
+    setFileCounter(0);
+    setTokenCounter(0);
+    
+    console.log('Deselected all files');
+  };
 
   // Sort options for the dropdown
 
@@ -1074,7 +1110,16 @@ const App = () => {
   // Update the renderFileTreeNode function to use Lucide icons
   const renderFileTreeNode = (node) => {
     const isDirectory = node.type === "directory";
-    const isSelected = selectedFiles.includes(node.path);
+    
+    // Normalize node path for consistent comparison
+    const normalizedNodePath = node.path.replace(/\\/g, '/');
+    
+    // Check if file is selected with normalized path
+    const isSelected = selectedFiles.some(path => {
+      // Normalize selected path
+      const normalizedSelectedPath = path.replace(/\\/g, '/');
+      return normalizedSelectedPath === normalizedNodePath;
+    });
     
     return (
       <div key={node.id} className="file-browser-node">
@@ -1166,36 +1211,39 @@ const App = () => {
 
   // Get list of selected file names - simplify to ONLY show files the user has manually clicked (blue highlighted)
   const getSelectedFilesList = () => {
-    // Get directly from the selectedFiles array - ONLY the files that are manually selected by user
-    const highlightedFiles = [];
+    // Normalize path function for consistent comparison
+    const normalizeFilePath = (path) => {
+      return path.replace(/\\/g, '/');
+    };
     
-    console.log(`Getting ONLY manually selected files (blue highlighted files in UI)`);
-    
-    // Look through each selected file path
-    for (const path of selectedFiles) {
-      // Find the file by path directly from allFiles
-      const file = allFiles.find(f => {
-        // Match by exact path or path with normalized slashes
-        return f.path === path || 
-               f.path.replace(/\\/g, '/') === path.replace(/\\/g, '/');
-      });
-      
-      // Only include if we found the file and it's a valid file
-      if (file && !file.isBinary && !file.isSkipped) {
-        console.log(`Including manually selected file: ${file.name} (${file.tokenCount} tokens)`);
-        highlightedFiles.push({
-          name: file.name,
-          path: file.path,
-          tokenCount: file.tokenCount || 0
-        });
+    // Map of normalized paths to file objects for quick lookup
+    const filePathMap = new Map();
+    allFiles.forEach(file => {
+      if (!file.isBinary && !file.isSkipped) {
+        filePathMap.set(normalizeFilePath(file.path), file);
       }
-    }
+    });
     
-    // Log what we found
-    console.log(`Found ${highlightedFiles.length} manually selected files`);
+    // Get the normalized selected paths
+    const normalizedSelectedPaths = selectedFiles.map(path => normalizeFilePath(path));
+    
+    // Get all selected files by directly looking them up in allFiles
+    const selectedFilesList = normalizedSelectedPaths
+      .map(path => {
+        const file = filePathMap.get(path);
+        if (file) {
+          return {
+            name: file.name,
+            path: file.path,
+            tokenCount: file.tokenCount || 0
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
     
     // Sort by token count (largest first)
-    return highlightedFiles.sort((a, b) => b.tokenCount - a.tokenCount);
+    return selectedFilesList.sort((a, b) => b.tokenCount - a.tokenCount);
   };
 
   // Update the renderFileBrowser function
@@ -1246,6 +1294,8 @@ const App = () => {
           sortOrder={sortOrder}
           onSortChange={handleSortOrderChange}
           getSortLabel={getSortLabel}
+          onSelectAll={selectAllFiles}
+          onDeselectAll={deselectAllFiles}
         />
         
         <div className="file-browser">
@@ -1259,17 +1309,24 @@ const App = () => {
   const [currentFile, setCurrentFile] = useState(null);
   const [fileContent, setFileContent] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [fileHistory, setFileHistory] = useState([]);
-  const [currentFolder, setCurrentFolder] = useState(''); // Track current folder for navigation
-
-  // Add a recentFiles and recentFolders state
-  const [recentFiles, setRecentFiles] = useState([]);
-  const [recentFolders, setRecentFolders] = useState([]);
 
   // Add isLoading state
   const [isLoading, setIsLoading] = useState(false);
 
-  // Update openFile to track recent files
+  // Log when activePage changes
+  useEffect(() => {
+    console.log('Active page changed to:', activePage);
+    if (activePage === 'edit') {
+      console.log('Editor page activated - viewedFile:', viewedFile?.path);
+      
+      // If no file is currently being viewed, we're in "New File" mode
+      if (!viewedFile) {
+        console.log('No viewed file, editor will start with a blank file');
+      }
+    }
+  }, [activePage, viewedFile]);
+
+  // Update openFile to correctly set viewedFile and switch to edit page
   const openFile = async (filePath, isFolder = false) => {
     try {
       // If it's a folder, update currentDirectory and return
@@ -1288,6 +1345,7 @@ const App = () => {
       
       // Show loading indicator
       setIsLoading(true);
+      console.log("Opening file:", filePath);
       
       // Read file content
       let fileContent = "";
@@ -1296,31 +1354,37 @@ const App = () => {
           const result = await window.electron.invoke("read-file", filePath);
           if (result.success) {
             fileContent = result.content;
+            console.log("File content loaded successfully:", filePath);
           } else {
-            // Removed console.error
+            console.error("Error reading file:", result.error || "Unknown error");
             setProcessingStatus({
               status: "error",
               message: `Error reading file: ${result.error || "Unknown error"}`
             });
+            setIsLoading(false);
             return;
           }
-        } catch (result) {
-          // Removed console.error
+        } catch (error) {
+          console.error("Error reading file:", error.message || "Unknown error");
           setProcessingStatus({
             status: "error",
-            message: `Error reading file: ${result.error || "Unknown error"}`
+            message: `Error reading file: ${error.message || "Unknown error"}`
           });
+          setIsLoading(false);
           return;
         }
       } else {
         try {
-          // ... existing code ...
+          // Browser version file loading not implemented
+          console.error("Browser-based file loading not implemented");
+          return;
         } catch (err) {
-          // Removed console.error
+          console.error("Error reading file:", err.message || "Unknown error");
           setProcessingStatus({
             status: "error",
             message: `Error reading file: ${err.message || "Unknown error"}`
           });
+          setIsLoading(false);
           return;
         }
       }
@@ -1332,11 +1396,22 @@ const App = () => {
         localStorage.setItem('pastemax-recent-files', JSON.stringify(updatedRecentFiles));
       }
       
-      // Set current file and content
-      setCurrentFile(filePath);
-      setFileContent(fileContent);
-      setIsEditing(true);
+      // Create a viewedFile object with required properties
+      const fileName = filePath.split('/').pop();
+      const viewedFileObj = {
+        path: filePath,
+        name: fileName,
+        content: fileContent
+      };
+      
+      console.log("Setting viewedFile:", viewedFileObj);
+      
+      // Set the viewedFile
+      setViewedFile(viewedFileObj);
+      
+      // Switch to edit page
       setActivePage("edit");
+      
       setIsLoading(false);
       
       // Add to file history
@@ -1350,10 +1425,10 @@ const App = () => {
       setFileHistory([filePath, ...fileHistory].slice(0, 20));
       
     } catch (error) {
-      // Removed console.error
+      console.error("Error opening file:", error.message || "Unknown error");
       setProcessingStatus({
         status: "error",
-        message: `Error opening file: ${error.message}`
+        message: `Error opening file: ${error.message || "Unknown error"}`
       });
       setIsLoading(false);
     }
@@ -1362,7 +1437,7 @@ const App = () => {
   // Function to handle folder navigation
   const handleFolderNavigation = (folderPath) => {
     // Update current folder
-    setCurrentFolder(folderPath);
+    setCurrentDirectory(folderPath);
     
     // If we're in the file browser view, update the displayed files
     if (window.electron) {
@@ -1422,40 +1497,45 @@ const App = () => {
         message: `Saving file: ${viewedFile.name}`
       });
       
-      // Save the file using the electron API
-      const result = await window.electron.writeFile(viewedFile.path, content);
+      console.log("Saving file:", viewedFile.path, "with content length:", content.length);
       
-      if (result && result.success) {
-        try {
-          // Refresh the file to get the latest content and token count
-          const refreshedFile = await window.electron.refreshFile(viewedFile.path);
+      // Save the file using the electron API
+      if (isElectron && window.electron && window.electron.writeFile) {
+        const result = await window.electron.writeFile(viewedFile.path, content);
+        
+        if (result && result.success) {
+          console.log("File saved successfully:", viewedFile.path);
           
-          if (refreshedFile) {
-            // Update the file in allFiles array
-            setAllFiles(prevFiles => 
-              prevFiles.map(file => 
-                file.path === viewedFile.path ? refreshedFile : file
-              )
-            );
-          }
-        } catch (refreshError) {
-          // Removed console.error
+          // Update the viewedFile with the new content
+          setViewedFile({
+            ...viewedFile,
+            content: content
+          });
+          
+          setProcessingStatus({
+            status: "complete",
+            message: `File saved: ${viewedFile.name}`
+          });
+          
+          return true;
+        } else {
+          console.error("Error saving file:", result?.error || "Unknown error");
+          setProcessingStatus({
+            status: "error",
+            message: `Error saving file: ${result?.error || "Unknown error"}`
+          });
+          return false;
         }
-        
-        setProcessingStatus({
-          status: "complete",
-          message: `File saved: ${viewedFile.name}`
-        });
-        
-        return true;
       } else {
+        console.error("Electron API not available for saving");
         setProcessingStatus({
-          status: "error",
-          message: "Error saving file: Unknown error"
+          status: "error", 
+          message: "File saving not available in this environment"
         });
         return false;
       }
     } catch (error) {
+      console.error("Error saving file:", error.message || "Unknown error");
       setProcessingStatus({
         status: "error",
         message: `Error saving file: ${error.message || "Unknown error"}`
@@ -1463,8 +1543,6 @@ const App = () => {
       return false;
     }
   };
-
-  const [currentDirectory, setCurrentDirectory] = useState("");
 
   // Fix the syntax error in the handleCreateFolder function
   const handleCreateFolder = (directory, folderName) => {
@@ -1815,34 +1893,26 @@ const App = () => {
                           return [];
                         }
                         
-                        // Get the files that are actually selected (counted in fileCounter)
-                        const actuallySelectedFiles = [];
-                        
-                        // Iterate through the file tree to find selected files
-                        const findSelectedFilesInTree = (nodes) => {
-                          for (const node of nodes) {
-                            if (node.type === "file" && selectedFiles.includes(node.path)) {
-                              if (node.fileData) {
-                                actuallySelectedFiles.push({
-                                  path: node.path,
-                                  content: node.fileData.content
-                                });
-                              }
-                            }
-                            if (node.children && Object.keys(node.children).length > 0) {
-                              findSelectedFilesInTree(Object.values(node.children));
-                            }
-                          }
+                        // Normalize path function for consistent comparison
+                        const normalizeFilePath = (path) => {
+                          return path.replace(/\\/g, '/');
                         };
                         
-                        // Find selected files in the tree
-                        findSelectedFilesInTree(buildFileTree());
+                        // Map of normalized paths to file objects for quick lookup
+                        const filePathMap = new Map();
+                        allFiles.forEach(file => {
+                          if (!file.isBinary && !file.isSkipped) {
+                            filePathMap.set(normalizeFilePath(file.path), file);
+                          }
+                        });
                         
-                        // If no files were found, try to use the selectedFiles array directly
-                        if (actuallySelectedFiles.length === 0) {
-                          console.log('No files found in tree, using selectedFiles directly');
-                          return selectedFiles.map(path => {
-                            const file = allFiles.find(f => f.path === path);
+                        // Get the normalized selected paths
+                        const normalizedSelectedPaths = selectedFiles.map(path => normalizeFilePath(path));
+                        
+                        // Get all selected files by directly looking them up in allFiles
+                        const selectedFilesWithContent = normalizedSelectedPaths
+                          .map(path => {
+                            const file = filePathMap.get(path);
                             if (file) {
                               return {
                                 path: file.path,
@@ -1850,10 +1920,15 @@ const App = () => {
                               };
                             }
                             return null;
-                          }).filter(Boolean);
+                          })
+                          .filter(Boolean);
+                        
+                        if (selectedFilesWithContent.length === 0) {
+                          console.log('No valid files found for prompt engine');
+                          return [];
                         }
                         
-                        return actuallySelectedFiles;
+                        return selectedFilesWithContent;
                       })()}
                       fileCounter={fileCounter}
                       tokenCounter={tokenCounter}
@@ -1878,6 +1953,28 @@ const App = () => {
                     <div className="history-page">
                       <h2>History</h2>
                       <p>This page will show your recent files and activities.</p>
+                    </div>
+                  )}
+
+                  {activePage === "edit" && (
+                    <div className="full-height-editor-container">
+                      <EditorPage 
+                        filePath={viewedFile ? viewedFile.path : null}
+                        content={viewedFile ? viewedFile.content : ''}
+                        currentDirectory={selectedFolder}
+                        onSave={saveFile}
+                        onClose={() => {
+                          setViewedFile(null);
+                          setActivePage("select");
+                        }}
+                        onCreateFile={handleFileCreationWithContent}
+                        onCreateFolder={handleCreateFolder}
+                        onNavigate={navigateToFileFromEditor}
+                        fileHistory={fileHistory}
+                        theme={themeMode}
+                        recentFiles={recentFiles}
+                        recentFolders={recentFolders}
+                      />
                     </div>
                   )}
 

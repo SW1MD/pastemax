@@ -1,41 +1,41 @@
 /* Theme variables and global settings */
 :root {
-  /* Primary color scheme - Simplified to fewer, more consistent black/grey tones */
-  --primary-color: #000000;
-  --primary-dark: #333333;
-  --secondary-color: #666666;
-  --accent-color: #000000; /* New consistent accent color for highlights */
+  /* Primary color scheme - Improved contrast for light theme */
+  --primary-color: #0055a3;
+  --primary-dark: #003b70;
+  --secondary-color: #444444;
+  --accent-color: #2271b1;
   
   /* Background and surface colors */
   --background-color: #ffffff;
   --surface-color: #f5f5f5; /* For cards and elevated surfaces */
   --surface-color-elevated: #ffffff; /* For modals and floating elements */
   
-  /* Text colors - More consistent hierarchy */
-  --text-color: #000000;
-  --text-color-secondary: #666666;
+  /* Text colors - Better contrast */
+  --text-color: #333333;
+  --text-color-secondary: #555555;
   --text-color-disabled: #999999;
   --text-color-inverse: #ffffff;
   
   /* Border and divider colors */
-  --border-color: #e0e0e0;
+  --border-color: #cccccc;
   --divider-color: #eeeeee;
   
   /* Interactive states */
-  --hover-color: #f5f5f5;
+  --hover-color: #f0f0f0;
   --active-color: #e5e5e5;
-  --focus-ring-color: rgba(0, 0, 0, 0.2);
+  --focus-ring-color: rgba(0, 85, 163, 0.3);
   
-  /* Status colors */
-  --success-color: #000000;
-  --warning-color: #666666;
-  --error-color: #000000;
-  --info-color: #333333;
+  /* Status colors - More visible */
+  --success-color: #00a651;
+  --warning-color: #f39c12;
+  --error-color: #d32f2f;
+  --info-color: #0288d1;
   
   /* Component-specific colors */
-  --button-background: #000000;
+  --button-background: #0055a3;
   --button-text-color: #ffffff;
-  --button-border-color: #000000;
+  --button-border-color: #0055a3;
   
   --input-background: #ffffff;
   --input-border-color: #e0e0e0;
@@ -112,20 +112,20 @@
 
 /* Dark theme variables */
 [data-theme="dark"] {
-  /* Primary color scheme */
-  --primary-color: #0078d4;
-  --primary-dark: #005a9e;
+  /* Primary color scheme - Brighter and more visible */
+  --primary-color: #2196f3;
+  --primary-dark: #0d8bf2;
   --secondary-color: #a0a0a0;
-  --accent-color: #0078d4;
+  --accent-color: #64b5f6;
   
   /* Background and surface colors */
-  --background-color: #1e1e1e;
-  --surface-color: #252525;
-  --surface-color-elevated: #333333;
+  --background-color: #121212;
+  --surface-color: #1e1e1e;
+  --surface-color-elevated: #282828;
   
-  /* Text colors */
+  /* Text colors - Improved readability */
   --text-color: #e0e0e0;
-  --text-color-secondary: #a0a0a0;
+  --text-color-secondary: #bbbbbb;
   --text-color-disabled: #666666;
   --text-color-inverse: #ffffff;
   
@@ -136,18 +136,18 @@
   /* Interactive states */
   --hover-color: #2d2d2d;
   --active-color: #3d3d3d;
-  --focus-ring-color: rgba(0, 120, 212, 0.4);
+  --focus-ring-color: rgba(33, 150, 243, 0.4);
   
-  /* Status colors */
+  /* Status colors - More visible in dark mode */
   --success-color: #4caf50;
   --warning-color: #ff9800;
   --error-color: #f44336;
   --info-color: #2196f3;
   
   /* Component-specific colors */
-  --button-background: #0078d4;
+  --button-background: #2196f3;
   --button-text-color: #ffffff;
-  --button-border-color: #0078d4;
+  --button-border-color: #2196f3;
   
   --input-background: #333333;
   --input-border-color: #444444;
