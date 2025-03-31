@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Copy, Settings, FileText } from 'lucide-react';
 import { Editor } from '@monaco-editor/react';
 
 const CodeEditor = ({ 
@@ -7,14 +6,14 @@ const CodeEditor = ({
   content, 
   onSave, 
   onClose,
-  theme = 'auto',
+  theme = 'dark',
   fileHistory = []
 }) => {
   const [editorContent, setEditorContent] = useState(content || '');
   const [isModified, setIsModified] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState(theme === 'dark' ? 'vs-dark' : 'vs');
   
   const editorRef = useRef(null);
+  const containerRef = useRef(null);
   
   // Update content when prop changes
   useEffect(() => {
@@ -23,11 +22,25 @@ const CodeEditor = ({
       setIsModified(false);
     }
   }, [filePath, content]);
-
-  // Update theme when prop changes
+  
+  // Add resize observer to handle editor size changes
   useEffect(() => {
-    setCurrentTheme(theme === 'dark' ? 'vs-dark' : 'vs');
-  }, [theme]);
+    if (editorRef.current) {
+      // Force layout recalculation after mounting
+      setTimeout(() => {
+        editorRef.current.layout();
+      }, 100);
+    }
+    
+    const handleResize = () => {
+      if (editorRef.current) {
+        editorRef.current.layout();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [editorRef.current]);
   
   // Determine file language for Monaco editor
   const getLanguage = () => {
@@ -67,29 +80,53 @@ const CodeEditor = ({
   // Monaco editor options
   const getEditorOptions = () => {
     return {
-      fontSize: 16,
+      fontSize: 14,
       fontFamily: "'Fira Code', Consolas, 'Courier New', monospace",
       lineNumbers: 'on',
-      scrollBeyondLastLine: false,
+      scrollBeyondLastLine: true, // Allow scrolling beyond last line to prevent cutoff
       minimap: { enabled: true },
-      lineHeight: 1.6,
+      lineHeight: 1.5,
       tabSize: 2,
-      automaticLayout: true,
+      automaticLayout: true, // Enable automatic layout adjustment
       wordWrap: 'on',
       cursorBlinking: 'smooth',
-      cursorSmoothCaretAnimation: 'on',
       smoothScrolling: true,
       renderWhitespace: 'selection',
-      fontLigatures: true,
-      renderLineHighlight: 'all',
-      colorDecorators: true,
-      mouseWheelZoom: true
+      theme: 'vs-dark',
+      fixedOverflowWidgets: true, // Fix cut-off widgets
+      padding: { bottom: 20 } // Add bottom padding to prevent cut-off
     };
   };
   
   // Handle editor mount
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
+    
+    // Apply dark theme styles to ensure visibility
+    const domNode = editor.getDomNode();
+    if (domNode) {
+      domNode.style.backgroundColor = '#1E1E1E';
+      domNode.classList.add('monaco-dark-theme');
+    }
+    
+    // Force dark background on monaco editor components
+    const editorContainer = domNode.closest('.monaco-editor');
+    if (editorContainer) {
+      editorContainer.style.backgroundColor = '#1E1E1E';
+      editorContainer.classList.add('monaco-dark-forced');
+      
+      // Set full height to parent containers
+      let parent = editorContainer.parentElement;
+      while (parent && !parent.classList.contains('code-editor-container')) {
+        parent.style.height = '100%';
+        parent = parent.parentElement;
+      }
+    }
+    
+    // Force layout calculation
+    setTimeout(() => {
+      editor.layout();
+    }, 100);
     
     // Add key binding for saving
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -98,83 +135,50 @@ const CodeEditor = ({
         setIsModified(false);
       }
     });
-    
-    // Set editor options
-    editor.updateOptions({
-      fontLigatures: true,
-      renderLineHighlight: 'all'
-    });
-    
-    // Set better colors for selection and line highlighting
-    monaco.editor.defineTheme('enhanced-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#1E1E1E',
-        'editor.foreground': '#E8E8E8',
-        'editor.lineHighlightBackground': '#303030',
-        'editor.selectionBackground': '#264F78',
-        'editor.selectionHighlightBackground': '#22374A',
-        'editorCursor.foreground': '#569CD6',
-        'editorLineNumber.foreground': '#858585',
-        'editorLineNumber.activeForeground': '#C6C6C6'
-      }
-    });
-    
-    monaco.editor.defineTheme('enhanced-light', {
-      base: 'vs',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#FFFFFF',
-        'editor.foreground': '#000000',
-        'editor.lineHighlightBackground': '#F0F0F0',
-        'editor.selectionBackground': '#ADD6FF',
-        'editor.selectionHighlightBackground': '#D8EBFF',
-        'editorCursor.foreground': '#1976D2',
-        'editorLineNumber.foreground': '#999999',
-        'editorLineNumber.activeForeground': '#333333'
-      }
-    });
-    
-    // Apply the enhanced theme
-    monaco.editor.setTheme(theme === 'dark' ? 'enhanced-dark' : 'enhanced-light');
-  };
-  
-  const handleSave = () => {
-    if (onSave && isModified) {
-      onSave(editorContent);
-      setIsModified(false);
-    }
-  };
-  
-  const handleCopy = () => {
-    navigator.clipboard.writeText(editorContent)
-      .then(() => {
-        console.log('Content copied to clipboard');
-      })
-      .catch(err => {
-        console.error('Failed to copy content: ', err);
-      });
   };
   
   return (
-    <div className="code-editor-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>      
-      <div className="code-editor-content" style={{ flex: 1, position: 'relative', height: 'calc(100vh - 120px)' }}>
+    <div className="code-editor-container dark-theme" ref={containerRef}>
+      <div className="code-editor-content">
         <Editor
           height="100%"
           width="100%"
           language={getLanguage()}
           value={editorContent}
-          theme={currentTheme}
+          theme="vs-dark"
           options={getEditorOptions()}
+          defaultValue={editorContent}
+          beforeMount={(monaco) => {
+            // Define a custom dark theme with stronger contrast
+            monaco.editor.defineTheme('vs-dark', {
+              base: 'vs-dark',
+              inherit: true,
+              rules: [
+                { token: 'comment', foreground: '6A9955' },
+                { token: 'keyword', foreground: '569CD6' },
+                { token: 'string', foreground: 'CE9178' }
+              ],
+              colors: {
+                'editor.background': '#1E1E1E',
+                'editor.foreground': '#D4D4D4',
+                'editorCursor.foreground': '#FFFFFF',
+                'editor.lineHighlightBackground': '#2A2D2E',
+                'editorLineNumber.foreground': '#858585',
+                'editor.selectionBackground': '#264F78',
+                'editor.inactiveSelectionBackground': '#3A3D41'
+              }
+            });
+          }}
           onChange={(value) => {
             setEditorContent(value);
             setIsModified(true);
           }}
           onMount={handleEditorDidMount}
-          loading={<div className="loading-editor">Loading editor...</div>}
+          loading={
+            <div className="loading-editor">
+              Loading editor...
+            </div>
+          }
         />
       </div>
     </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import CodeEditor from './CodeEditor';
-import { FilePlus, FolderPlus, Save, ChevronLeft, ChevronRight, Folder, X } from 'lucide-react';
+import { Save, ChevronLeft, X } from 'lucide-react';
 
 const EditorPage = ({ 
   filePath,
@@ -20,6 +20,7 @@ const EditorPage = ({
   const [editorContent, setEditorContent] = useState(content || '');
   const [fileName, setFileName] = useState('');
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const editorPageRef = useRef(null);
   
   useEffect(() => {
     if (filePath) {
@@ -44,6 +45,27 @@ const EditorPage = ({
     setEditorContent(content || '');
   }, [content]);
   
+  // Add resize handling for the editor container
+  useEffect(() => {
+    const handleResize = () => {
+      // Force recalculation of editor size
+      if (editorPageRef.current) {
+        const wrapperElement = editorPageRef.current.querySelector('.editor-content-wrapper');
+        if (wrapperElement) {
+          // Force height calculation based on header
+          const headerHeight = editorPageRef.current.querySelector('.editor-header')?.offsetHeight || 48;
+          wrapperElement.style.height = `calc(100vh - ${headerHeight}px)`;
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    // Initial calculation
+    handleResize();
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   const handleEditorSave = async (content) => {
     try {
       if (isNewFile) {
@@ -58,9 +80,9 @@ const EditorPage = ({
   };
   
   return (
-    <div className="editor-page">
+    <div className="editor-page" ref={editorPageRef}>
       <div className="editor-header">
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div className="editor-header-left">
           <button
             onClick={onClose}
             className="editor-back-btn"
@@ -70,19 +92,19 @@ const EditorPage = ({
           </button>
           <span className="file-name">{fileName}</span>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="editor-header-actions">
           <button
             onClick={() => handleEditorSave(editorContent)}
             className="editor-save-btn"
           >
-            <Save size={16} />
-            Save
+            <Save size={14} />
+            <span>Save</span>
           </button>
           <button
             onClick={onClose}
             className="editor-close-btn"
           >
-            <X size={16} />
+            <X size={14} />
           </button>
         </div>
       </div>
@@ -93,7 +115,7 @@ const EditorPage = ({
           content={editorContent}
           onSave={handleEditorSave}
           onClose={onClose}
-          theme={theme}
+          theme="dark"
           fileHistory={fileHistory}
           onNavigate={onNavigate}
         />

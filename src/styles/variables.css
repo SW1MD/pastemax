@@ -1,20 +1,20 @@
 /* Theme variables and global settings */
 :root {
   /* Primary color scheme - Improved contrast for light theme */
-  --primary-color: #0055a3;
-  --primary-dark: #003b70;
+  --primary-color: #0066cc;
+  --primary-dark: #004c99;
   --secondary-color: #444444;
   --accent-color: #2271b1;
   
   /* Background and surface colors */
-  --background-color: #ffffff;
-  --surface-color: #f5f5f5; /* For cards and elevated surfaces */
-  --surface-color-elevated: #ffffff; /* For modals and floating elements */
+  --background-color: #f5f5f5;
+  --surface-color: #ffffff;
+  --surface-color-elevated: #ffffff;
   
   /* Text colors - Better contrast */
-  --text-color: #333333;
-  --text-color-secondary: #555555;
-  --text-color-disabled: #999999;
+  --text-color: #252525;
+  --text-color-secondary: #444444;
+  --text-color-disabled: #888888;
   --text-color-inverse: #ffffff;
   
   /* Border and divider colors */
@@ -112,31 +112,31 @@
 
 /* Dark theme variables */
 [data-theme="dark"] {
-  /* Primary color scheme - Brighter and more visible */
-  --primary-color: #2196f3;
-  --primary-dark: #0d8bf2;
-  --secondary-color: #a0a0a0;
-  --accent-color: #64b5f6;
+  /* Primary color scheme */
+  --primary-color: #007acc;
+  --primary-dark: #005b99;
+  --secondary-color: #999999;
+  --accent-color: #0098ff;
   
   /* Background and surface colors */
-  --background-color: #121212;
-  --surface-color: #1e1e1e;
-  --surface-color-elevated: #282828;
+  --background-color: #1e1e1e;
+  --surface-color: #252526;
+  --surface-color-elevated: #333333;
   
-  /* Text colors - Improved readability */
-  --text-color: #e0e0e0;
-  --text-color-secondary: #bbbbbb;
+  /* Text colors */
+  --text-color: #cccccc;
+  --text-color-secondary: #999999;
   --text-color-disabled: #666666;
   --text-color-inverse: #ffffff;
   
   /* Border and divider colors */
-  --border-color: #444444;
-  --divider-color: #333333;
+  --border-color: #474747;
+  --divider-color: #3c3c3c;
   
   /* Interactive states */
-  --hover-color: #2d2d2d;
-  --active-color: #3d3d3d;
-  --focus-ring-color: rgba(33, 150, 243, 0.4);
+  --hover-color: #2a2d2e;
+  --active-color: #37373d;
+  --focus-ring-color: rgba(0, 122, 204, 0.4);
   
   /* Status colors - More visible in dark mode */
   --success-color: #4caf50;
@@ -145,9 +145,9 @@
   --info-color: #2196f3;
   
   /* Component-specific colors */
-  --button-background: #2196f3;
+  --button-background: #4d4d4d;
   --button-text-color: #ffffff;
-  --button-border-color: #2196f3;
+  --button-border-color: #4d4d4d;
   
   --input-background: #333333;
   --input-border-color: #444444;

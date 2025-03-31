@@ -920,191 +920,140 @@
 .editor-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
   width: 100%;
-  position: relative;
-  flex: 1;
   overflow: hidden;
-  background-color: var(--background-color);
+  background-color: #1E1E1E !important;
+  position: relative;
 }
 
+/* Editor header bar */
 .editor-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  background-color: var(--card-background);
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #252526 !important;
+  border-bottom: 1px solid #474747;
+  height: 48px;
   z-index: 10;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
-.editor-header .file-name {
-  font-weight: bold;
-  font-size: 16px;
-  color: var(--text-color);
-}
-
-.editor-content-wrapper {
+.editor-header-left {
   display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-  height: calc(100% - 50px);
+  align-items: center;
+  gap: 12px;
 }
 
-/* Fix monaco editor container to make it visible */
-.editor-page .code-editor-container {
-  height: 100% !important;
-  flex: 1 !important;
-  min-height: 300px;
+.editor-header-actions {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background-color: var(--background-color);
+  align-items: center;
+  gap: 8px;
 }
 
-.monaco-editor-container {
-  height: 100% !important;
-  width: 100% !important;
-  flex: 1;
-  min-height: 300px;
+.file-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #E8E8E8;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Monaco specific fixes */
-.monaco-editor, 
-.monaco-editor .overflow-guard,
-.monaco-editor-background {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* Added specific styles for the full-height editor container */
-.full-height-editor-container {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 60px) !important;
-  width: 100%;
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-  background-color: var(--background-color);
-}
-
-/* Back button style */
 .editor-back-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
-  background-color: var(--primary-color);
-  border: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid #474747;
   border-radius: 4px;
-  color: white;
+  color: #CCCCCC;
   cursor: pointer;
-  margin-right: 12px;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .editor-back-btn:hover {
-  background-color: var(--primary-dark);
+  background-color: #2A2D2E;
+  color: #FFFFFF;
 }
 
-/* Save button style */
 .editor-save-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  background-color: var(--primary-color);
+  padding: 6px 12px;
+  background-color: #007ACC;
   border: none;
   border-radius: 4px;
-  color: white;
-  font-weight: bold;
+  color: #FFFFFF;
+  font-size: 12px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .editor-save-btn:hover {
-  background-color: var(--primary-dark);
+  background-color: #0062A3;
 }
 
-/* Close button style */
 .editor-close-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background-color: var(--card-background);
-  border: 1px solid var(--border-color);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid #474747;
   border-radius: 4px;
-  color: var(--text-color);
+  color: #CCCCCC;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .editor-close-btn:hover {
-  background-color: var(--hover-color);
-  color: var(--primary-color);
+  background-color: #2A2D2E;
+  color: #F44336;
 }
 
-.sort-dropdown {
-  margin-left: auto;
-}
-
-.sort-dropdown-button {
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-color);
-  background-color: var(--card-background);
-  border: 1px solid var(--border-color);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-/* Add loading indicator for editor */
-.loading-editor {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
+/* Editor content area */
+.editor-content-wrapper {
+  flex: 1;
   width: 100%;
-  font-size: 14px;
-  color: var(--text-color);
-  background-color: var(--background-color);
-  opacity: 0.8;
-}
-
-.current-file-display {
-  margin: 0 12px;
-  padding: 6px 12px;
-  background-color: var(--card-background);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--border-color);
-}
-
-.current-file-name, .current-directory-name {
-  font-weight: 500;
-  font-size: 14px;
-  color: var(--text-color);
-  white-space: nowrap;
+  height: calc(100vh - 48px);
   overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 300px;
+  position: relative;
+  background-color: #1E1E1E !important;
+  display: flex; /* Add flexbox to ensure proper sizing */
+  flex-direction: column; /* Ensure content flows vertically */
 }
 
-/* Fix MonacoEditor height */
+/* Code editor container */
+.code-editor-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: #1E1E1E !important;
+  display: flex; /* Add flexbox to ensure proper sizing */
+  flex-direction: column; /* Ensure content flows vertically */
+}
+
+.code-editor-content {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: #1E1E1E !important;
+  flex: 1; /* Allow content to expand */
+  display: flex; /* Add flexbox for better sizing behavior */
+  flex-direction: column; /* Stack children vertically */
+}
+
+/* Monaco editor overrides to ensure full height and proper scrolling */
 .monaco-editor {
+  width: 100% !important;
   height: 100% !important;
-  min-height: 200px;
+  flex: 1 !important; /* Allow editor to grow */
 }
 
 .monaco-editor .overflow-guard {
@@ -1112,16 +1061,127 @@
   height: 100% !important;
 }
 
-.monaco-editor-background {
+/* Ensure Monaco wrapper element takes full height */
+.monaco-editor-container {
+  height: 100% !important;
+  width: 100% !important;
+  flex: 1 !important; /* Allow container to grow */
+}
+
+/* Ensure editor's content area has proper height */
+.monaco-scrollable-element {
   width: 100% !important;
   height: 100% !important;
 }
 
-/* Make sure the editor content area has a proper height */
-.full-height-editor-container .code-editor-content {
-  flex: 1;
-  min-height: 400px;
+/* Make sure the editor view doesn't get cut off */
+.monaco-editor .lines-content {
+  padding-bottom: 30px !important; /* Add bottom padding to prevent cut-off */
+}
+
+.code-editor-container.dark-theme {
+  --editor-bg: #1E1E1E;
+  --editor-text: #D4D4D4;
+  background-color: #1E1E1E !important;
+}
+
+/* Minimap style overrides */
+.monaco-editor .minimap {
+  background-color: #1E1E1E !important;
+}
+
+/* For smaller screens */
+@media (max-width: 768px) {
+  .editor-save-btn span {
+    display: none;
+  }
+  
+  .editor-save-btn {
+    width: 32px;
+    padding: 6px;
+  }
+}
+
+/* Loading state */
+.loading-editor {
   display: flex;
-  position: relative;
-  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: #1E1E1E;
+  color: #CCCCCC;
+  font-size: 14px;
+}
+
+/* Ensure the Monaco editor loads with dark theme */
+.monaco-editor-hover {
+  background-color: #252526 !important;
+  border: 1px solid #474747 !important;
+  color: #D4D4D4 !important;
+}
+
+/* Override any white backgrounds */
+.editor-view *,
+.editor-page *,
+.code-editor-container * {
+  background-color: transparent;
+}
+
+/* This ensures parent elements don't override our dark theme */
+.monaco-editor * {
+  color-scheme: dark !important;
+}
+
+/* Ensure editor scrollbars are visible on dark theme */
+.monaco-editor .scrollbar .slider {
+  background-color: rgba(121, 121, 121, 0.4) !important;
+}
+
+.monaco-editor .scrollbar .slider:hover {
+  background-color: rgba(100, 100, 100, 0.7) !important;
+}
+
+/* Additional styles for dark mode */
+[data-theme="dark"] .monaco-editor-background,
+[data-theme="dark"] .monaco-editor,
+[data-theme="dark"] .monaco-editor .overflow-guard,
+[data-theme="dark"] .monaco-editor .margin {
+  background-color: #1E1E1E !important;
+}
+
+/* Ensure the editor content area is dark in dark mode */
+[data-theme="dark"] .monaco-editor-container,
+[data-theme="dark"] .monaco-editor,
+[data-theme="dark"] .editor-container,
+[data-theme="dark"] .editor-instance,
+[data-theme="dark"] .overflow-guard,
+[data-theme="dark"] .monaco-editor-background {
+  background-color: #1E1E1E !important;
+}
+
+/* Add even stronger styles to force dark background */
+.editor-page,
+.editor-content-wrapper,
+.code-editor-container,
+.monaco-editor,
+.monaco-editor .overflow-guard,
+.monaco-editor-background,
+.monaco-editor-container,
+.monaco-editor .margin,
+.monaco-editor .monaco-editor-background,
+.full-height-editor-container {
+  background-color: #1E1E1E !important;
+}
+
+/* Specifically target all editor-related elements */
+[class*="monaco-editor"],
+[class*="monaco"] {
+  background-color: #1E1E1E !important;
+}
+
+/* Completely disable any light theme */
+.vs {
+  background-color: #1E1E1E !important;
+  color: #D4D4D4 !important;
 } 

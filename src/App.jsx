@@ -1805,6 +1805,22 @@ const App = () => {
     return text.split(/\s+/).length;
   };
 
+  // Add this useEffect to ensure dark mode is applied to the document element
+  useEffect(() => {
+    // Ensure theme is updated in real-time
+    document.documentElement.setAttribute('data-theme', themeMode);
+    
+    // Add a specific class for the editor
+    if (activePage === 'edit') {
+      document.documentElement.classList.add('editor-active');
+      document.documentElement.classList.add(`editor-${themeMode}`);
+    } else {
+      document.documentElement.classList.remove('editor-active');
+      document.documentElement.classList.remove('editor-dark');
+      document.documentElement.classList.remove('editor-light');
+    }
+  }, [themeMode, activePage]);
+
   return (
     <div className="app-container" data-theme={themeMode}>
       <div className="header">
@@ -1957,7 +1973,13 @@ const App = () => {
                   )}
 
                   {activePage === "edit" && (
-                    <div className="full-height-editor-container">
+                    <div className="full-height-editor-container" style={{
+                      backgroundColor: '#1E1E1E',
+                      height: 'calc(100vh - 60px)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden'
+                    }}>
                       <EditorPage 
                         filePath={viewedFile ? viewedFile.path : null}
                         content={viewedFile ? viewedFile.content : ''}
@@ -1971,7 +1993,7 @@ const App = () => {
                         onCreateFolder={handleCreateFolder}
                         onNavigate={navigateToFileFromEditor}
                         fileHistory={fileHistory}
-                        theme={themeMode}
+                        theme="dark"
                         recentFiles={recentFiles}
                         recentFolders={recentFolders}
                       />
@@ -2023,7 +2045,7 @@ const App = () => {
                   onCreateFile={handleFileCreationWithContent}
                   onCreateFolder={handleCreateFolder}
                   onNavigate={navigateToFileFromEditor}
-                  theme={themeMode === 'dark' ? 'tomorrow_night' : 'github'}
+                  theme="dark"
                   fileHistory={fileHistory}
                   recentFiles={recentFiles}
                   recentFolders={recentFolders}
