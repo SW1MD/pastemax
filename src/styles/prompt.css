@@ -289,4 +289,43 @@
     align-items: flex-start;
     gap: 8px;
   }
+}
+
+/* Multi-select styles */
+.prompt-options-select {
+  appearance: none;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-color);
+  width: 100%;
+  min-height: 200px;
+  padding: 8px;
+}
+
+.prompt-options-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-transparent);
+}
+
+.prompt-options-select option {
+  padding: 8px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.prompt-options-select option:checked {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.prompt-options-select option:hover:not(:checked) {
+  background-color: var(--hover-color);
+}
+
+.prompt-options-select option:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
 } 

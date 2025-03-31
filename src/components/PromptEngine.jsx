@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Save, Copy, Play, Plus, Settings, Edit, Tag, Bookmark, X, Clipboard } from 'lucide-react';
 
 // Template prompt data
@@ -136,21 +136,21 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
   console.log('PromptEngine received selectedFiles:', selectedFiles);
   
   const [activeTab, setActiveTab] = useState('user');
-  const [userPromptTab, setUserPromptTab] = useState('editor'); // 'editor' or 'preview'
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [customPrompt, setCustomPrompt] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
+  const [userRequirement, setUserRequirement] = useState('');
   const [internalSelectedFiles, setInternalSelectedFiles] = useState(selectedFiles);
   const [promptOptions, setPromptOptions] = useState({
-    includeProgrammingLanguage: true,
-    includeFramework: true,
-    includeTechStack: true,
+    includeProgrammingLanguage: false,
+    includeFramework: false,
+    includeTechStack: false,
     includeRules: false,
     includeProjectConfig: false,
     includeSelectedFiles: false,
-    includeProjectPaths: false
+    includeProjectPaths: false,
+    _sections: {}
   });
-  const [promptPreview, setPromptPreview] = useState('');
   const [variables, setVariables] = useState({});
   const [finalPrompt, setFinalPrompt] = useState('');
   const [savedPrompts, setSavedPrompts] = useState([]);
@@ -183,6 +183,16 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
       }
     }
     
+    // Load saved user requirement from localStorage
+    const savedUserRequirement = localStorage.getItem('pastemax-user-requirement');
+    if (savedUserRequirement) {
+      try {
+        setUserRequirement(savedUserRequirement);
+      } catch (e) {
+        console.error('Error loading user requirement:', e);
+      }
+    }
+    
     // Load saved prompt options from localStorage
     const savedPromptOptions = localStorage.getItem('pastemax-prompt-options');
     if (savedPromptOptions) {
@@ -190,16 +200,6 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
         setPromptOptions(JSON.parse(savedPromptOptions));
       } catch (e) {
         console.error('Error loading prompt options:', e);
-      }
-    }
-    
-    // Load saved user prompt tab from localStorage
-    const savedUserPromptTab = localStorage.getItem('pastemax-user-prompt-tab');
-    if (savedUserPromptTab) {
-      try {
-        setUserPromptTab(savedUserPromptTab);
-      } catch (e) {
-        console.error('Error loading user prompt tab:', e);
       }
     }
     
@@ -240,15 +240,20 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     localStorage.setItem('pastemax-user-prompt', userPrompt);
   }, [userPrompt]);
   
+  // Save user requirement to localStorage and update prompt
+  useEffect(() => {
+    localStorage.setItem('pastemax-user-requirement', userRequirement);
+    
+    // Update the prompt when requirement changes
+    if (promptOptions._sections) {
+      updatePromptContent(promptOptions._sections);
+    }
+  }, [userRequirement]);
+  
   // Save prompt options to localStorage when they change
   useEffect(() => {
     localStorage.setItem('pastemax-prompt-options', JSON.stringify(promptOptions));
   }, [promptOptions]);
-  
-  // Save user prompt tab to localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem('pastemax-user-prompt-tab', userPromptTab);
-  }, [userPromptTab]);
   
   // Update internalSelectedFiles when selectedFiles prop changes
   useEffect(() => {
@@ -621,46 +626,24 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     localStorage.setItem('pastemax-custom-prompts', JSON.stringify(updatedPrompts));
   };
   
-  // Copy prompt to clipboard
-  const copyToClipboard = () => {
-    // Get the appropriate prompt based on the active tab
-    const promptToCopy = activeTab === 'user' 
-      ? userPrompt 
-      : (finalPrompt || customPrompt);
-      
-    navigator.clipboard.writeText(promptToCopy)
-      .then(() => {
-        alert('Prompt copied to clipboard!');
-      })
-      .catch(err => {
-        console.error('Error copying to clipboard:', err);
-        alert('Failed to copy to clipboard');
-      });
-  };
-  
-  // Apply the prompt (placeholder for future integration)
-  const applyPrompt = () => {
-    setLoading(true);
-    
-    // Get the appropriate prompt based on the active tab
-    const promptToApply = activeTab === 'user' 
-      ? userPrompt 
-      : (finalPrompt || customPrompt);
-    
-    // Simulate sending to an AI service
-    setTimeout(() => {
-      setLoading(false);
-      alert('Prompt applied! This would send the prompt to the AI service in a real implementation.');
-      console.log('Applied prompt:', promptToApply);
-    }, 1000);
-  };
-  
   // Paste content to the selected text area in the browser and optionally submit the form
   const pasteToTextArea = (autoSubmit = false) => {
     // Get the appropriate prompt based on the active tab
-    const contentToPaste = activeTab === 'user' 
-      ? (userPromptTab === 'preview' ? promptPreview : userPrompt)
-      : (finalPrompt || customPrompt);
+    let contentToPaste = '';
+    
+    if (activeTab === 'user') {
+      // For user tab, directly use the current userPrompt which already contains requirement if needed
+      contentToPaste = userPrompt;
+      
+      // Add requirement manually if not already in the prompt
+      if (userRequirement && userRequirement.trim() !== '' && 
+          !contentToPaste.includes(`I need help with: ${userRequirement.trim()}`)) {
+        contentToPaste = `I need help with: ${userRequirement.trim()}\n\n${contentToPaste}`;
+      }
+    } else {
+      // For other tabs
+      contentToPaste = finalPrompt || customPrompt;
+    }
     
     if (!contentToPaste || contentToPaste.trim() === '') {
       alert('No content to paste. Please create or select a prompt first.');
@@ -1143,6 +1126,452 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     return previewPrompt;
   };
   
+  // Helper function to update the preview content
+  const updatePreviewFromOptions = useCallback(() => {
+    // No longer needed - options directly modify the prompt
+  }, []);
+  
+  // Update preview when prompt options change
+  useEffect(() => {
+    // Save options to localStorage
+    localStorage.setItem('pastemax-prompt-options', JSON.stringify(promptOptions));
+  }, [promptOptions]);
+  
+  // Update preview when user prompt changes
+  useEffect(() => {
+    // No longer needed - options directly modify the prompt
+  }, [userPrompt, activeTab]);
+  
+  // Handler for checkbox option changes
+  const handleOptionChange = (optionName, value) => {
+    // Update the promptOptions state with the new value
+    setPromptOptions(prevOptions => {
+      const newOptions = {
+        ...prevOptions,
+        [optionName]: value
+      };
+
+      // Create a copy of the current sections
+      const sections = { ...(prevOptions._sections || {}) };
+      
+      if (value) {
+        // Add the section
+        addSectionToPrompt(optionName);
+      } else {
+        // Remove the section from sections
+        delete sections[optionName];
+        
+        // Update with the section removed
+        updatePromptContent(sections);
+      }
+
+      return {
+        ...newOptions,
+        _sections: sections
+      };
+    });
+  };
+
+  // Update prompt directly based on option changes
+  const updatePromptWithOptions = (isChecked, optionName) => {
+    if (isChecked) {
+      // Add the section
+      addSectionToPrompt(optionName);
+    } else {
+      // Create a copy of the current sections
+      const sections = { ...(promptOptions._sections || {}) };
+      
+      // Remove the section
+      delete sections[optionName];
+      
+      // Update with the section removed
+      updatePromptContent(sections);
+    }
+  };
+  
+  // Add a section to the user prompt
+  const addSectionToPrompt = (optionName) => {
+    // Generate the section content without tags
+    let sectionContent = "";
+    const projectInfo = projectConfig ? getProjectInfo() : {};
+    
+    switch(optionName) {
+      case 'includeProgrammingLanguage':
+        if (projectInfo.language) {
+          sectionContent = `Language: ${projectInfo.language}`;
+        }
+        break;
+      case 'includeFramework':
+        if (projectInfo.framework && projectInfo.framework !== 'none') {
+          sectionContent = `Framework: ${projectInfo.framework}`;
+        }
+        break;
+      case 'includeTechStack':
+        if (projectInfo.techStack && projectInfo.techStack !== 'Not specified') {
+          sectionContent = `Tech Stack: ${projectInfo.techStack}`;
+        }
+        break;
+      case 'includeRules':
+        if (projectRules && projectRules.trim() !== '') {
+          sectionContent = `Project Rules:\n${projectRules}`;
+        }
+        break;
+      case 'includeProjectConfig':
+        if (projectInfo) {
+          sectionContent = `Project Configuration:`;
+          
+          if (projectInfo.testing && projectInfo.testing !== 'none') {
+            sectionContent += `\n- Testing: ${projectInfo.testing}`;
+          }
+          if (projectInfo.linter && projectInfo.linter !== 'none') {
+            sectionContent += `\n- Linter: ${projectInfo.linter}`;
+          }
+          if (projectInfo.formatter && projectInfo.formatter !== 'none') {
+            sectionContent += `\n- Formatter: ${projectInfo.formatter}`;
+          }
+          if (projectInfo.buildCommand) {
+            sectionContent += `\n- Build Command: ${projectInfo.buildCommand}`;
+          }
+          if (projectInfo.devCommand) {
+            sectionContent += `\n- Dev Command: ${projectInfo.devCommand}`;
+          }
+          if (projectInfo.serverType && projectInfo.serverType !== 'local') {
+            sectionContent += `\n- Server Type: ${projectInfo.serverType}`;
+          }
+          if (projectInfo.apiProtocol && projectInfo.apiProtocol !== 'rest') {
+            sectionContent += `\n- API Protocol: ${projectInfo.apiProtocol}`;
+          }
+          if (projectInfo.database && projectInfo.database !== 'none') {
+            sectionContent += `\n- Database: ${projectInfo.database}`;
+          }
+        }
+        break;
+      case 'includeSelectedFiles':
+        if (internalSelectedFiles.length > 0) {
+          sectionContent = `Selected Files:`;
+          internalSelectedFiles.forEach(file => {
+            const normalizedPath = file.path.replace(/\\/g, '/');
+            sectionContent += `\n- ${normalizedPath}`;
+          });
+          
+          // Add file contents if there are fewer than 5 files
+          if (internalSelectedFiles.length <= 5) {
+            sectionContent += '\n\nFile Contents:';
+            internalSelectedFiles.forEach(file => {
+              const normalizedPath = file.path.replace(/\\/g, '/');
+              sectionContent += `\n\n--- ${normalizedPath} ---\n`;
+              sectionContent += `${file.content || 'Content not available'}`;
+            });
+          } else {
+            sectionContent += '\n\nToo many files selected to include contents. Please narrow your selection to view file contents.';
+          }
+        }
+        break;
+      case 'includeProjectPaths':
+        if (internalSelectedFiles.length > 0) {
+          sectionContent = `Project Paths:`;
+          internalSelectedFiles.forEach(file => {
+            const normalizedPath = file.path.replace(/\\/g, '/');
+            sectionContent += `\n- ${normalizedPath}`;
+          });
+        }
+        break;
+      default:
+        break;
+    }
+    
+    // Add section to prompt if we have content
+    if (sectionContent) {
+      // Create a copy of the current sections
+      const sections = { ...(promptOptions._sections || {}) };
+      
+      // Add the new section
+      sections[optionName] = {
+        optionName,
+        content: sectionContent
+      };
+      
+      // Update prompt with all sections
+      updatePromptContent(sections);
+    }
+  };
+  
+  // Update the entire prompt content based on active sections
+  const updatePromptContent = (sections) => {
+    // Get the current user prompt
+    let currentPrompt = userPrompt;
+
+    // Create an array to store all sections content
+    const sectionContents = [];
+
+    // Add sections in a consistent order
+    const orderedSections = [
+      'includeProgrammingLanguage',
+      'includeFramework', 
+      'includeTechStack',
+      'includeProjectConfig',
+      'includeRules',
+      'includeProjectPaths',
+      'includeSelectedFiles'
+    ];
+
+    // Collect all section content
+    for (const optionName of orderedSections) {
+      if (sections[optionName] && sections[optionName].content) {
+        sectionContents.push(sections[optionName].content);
+      }
+    }
+
+    // Join all sections with double newlines
+    const allSectionsContent = sectionContents.join('\n\n');
+
+    // If there's a requirement, handle it specially
+    if (userRequirement && userRequirement.trim() !== '') {
+      const requirementText = `I need help with: ${userRequirement.trim()}`;
+
+      // If there are no sections to add
+      if (!allSectionsContent) {
+        setUserPrompt(requirementText);
+        return;
+      }
+
+      // Check if sections were before or after the requirement text in the original prompt
+      const requirementIndex = currentPrompt.indexOf(requirementText);
+      const firstSectionIndex = Object.values(sections)
+        .filter(section => section && section.content)
+        .reduce((earliest, section) => {
+          const index = currentPrompt.indexOf(section.content);
+          return index !== -1 && (earliest === -1 || index < earliest) ? index : earliest;
+        }, -1);
+
+      // If this is the first time adding sections or they were after the requirement
+      if (firstSectionIndex === -1 || (requirementIndex !== -1 && requirementIndex < firstSectionIndex)) {
+        setUserPrompt(`${requirementText}\n\n${allSectionsContent}`);
+      } else {
+        // Sections were before the requirement
+        setUserPrompt(`${allSectionsContent}\n\n${requirementText}`);
+      }
+    } else {
+      // No requirement text, just use the sections
+      setUserPrompt(allSectionsContent);
+    }
+
+    // Create a new options object with the updated sections
+    const newOptions = {
+      ...promptOptions,
+      _sections: sections
+    };
+
+    // Update checkbox states to reflect what sections are actually included
+    orderedSections.forEach(optionName => {
+      // Set each option based on whether the section exists
+      newOptions[optionName] = !!sections[optionName];
+    });
+
+    // Store sections info in the promptOptions state
+    setPromptOptions(newOptions);
+  };
+  
+  // Remove a section from the user prompt
+  const removeSectionFromPrompt = (optionName) => {
+    // Get current sections
+    const sections = {...(promptOptions._sections || {})};
+    
+    // Remove the section
+    delete sections[optionName];
+    
+    // Update the prompt
+    updatePromptContent(sections);
+  };
+  
+  // Copy prompt to clipboard
+  const copyToClipboard = () => {
+    // Get the appropriate prompt based on the active tab
+    let promptToCopy = '';
+    
+    if (activeTab === 'user') {
+      // For user tab, directly use the current userPrompt which already contains requirement if needed
+      promptToCopy = userPrompt;
+      
+      // Add requirement manually if not already in the prompt
+      if (userRequirement && userRequirement.trim() !== '' && 
+          !promptToCopy.includes(`I need help with: ${userRequirement.trim()}`)) {
+        promptToCopy = `I need help with: ${userRequirement.trim()}\n\n${promptToCopy}`;
+      }
+    } else {
+      // For other tabs
+      promptToCopy = finalPrompt || customPrompt;
+    }
+      
+    navigator.clipboard.writeText(promptToCopy)
+      .then(() => {
+        alert('Prompt copied to clipboard!');
+      })
+      .catch(err => {
+        console.error('Error copying to clipboard:', err);
+        alert('Failed to copy to clipboard');
+      });
+  };
+  
+  // Apply the prompt (placeholder for future integration)
+  const applyPrompt = () => {
+    setLoading(true);
+    
+    // Get the appropriate prompt based on the active tab
+    let promptToApply = '';
+    
+    if (activeTab === 'user') {
+      // For user tab, directly use the current userPrompt which already contains requirement if needed
+      promptToApply = userPrompt;
+      
+      // Add requirement manually if not already in the prompt
+      if (userRequirement && userRequirement.trim() !== '' && 
+          !promptToApply.includes(`I need help with: ${userRequirement.trim()}`)) {
+        promptToApply = `I need help with: ${userRequirement.trim()}\n\n${promptToApply}`;
+      }
+    } else {
+      // For other tabs
+      promptToApply = finalPrompt || customPrompt;
+    }
+    
+    // Simulate sending to an AI service
+    setTimeout(() => {
+      setLoading(false);
+      alert('Prompt applied! This would send the prompt to the AI service in a real implementation.');
+      console.log('Applied prompt:', promptToApply);
+    }, 1000);
+  };
+  
+  // Initialize sections from options
+  useEffect(() => {
+    // Load saved prompt options from localStorage
+    const savedPromptOptions = localStorage.getItem('pastemax-prompt-options');
+    if (savedPromptOptions) {
+      try {
+        const parsedOptions = JSON.parse(savedPromptOptions);
+        setPromptOptions(prevOptions => ({
+          ...prevOptions,
+          ...parsedOptions
+        }));
+      } catch (e) {
+        console.error('Error loading prompt options:', e);
+      }
+    }
+
+    // Set up all enabled sections at once
+    const enabledSections = {};
+    let hasEnabledSections = false;
+    
+    // Create a single sections object with all enabled options
+    Object.keys(promptOptions).forEach(key => {
+      if (key.startsWith('include') && key !== '_sections' && promptOptions[key] === true) {
+        // Generate and collect the section content
+        let sectionContent = "";
+        const projectInfo = projectConfig ? getProjectInfo() : {};
+        
+        switch(key) {
+          case 'includeProgrammingLanguage':
+            if (projectInfo.language) {
+              sectionContent = `Language: ${projectInfo.language}`;
+            }
+            break;
+          case 'includeFramework':
+            if (projectInfo.framework && projectInfo.framework !== 'none') {
+              sectionContent = `Framework: ${projectInfo.framework}`;
+            }
+            break;
+          case 'includeTechStack':
+            if (projectInfo.techStack && projectInfo.techStack !== 'Not specified') {
+              sectionContent = `Tech Stack: ${projectInfo.techStack}`;
+            }
+            break;
+          case 'includeRules':
+            if (projectRules && projectRules.trim() !== '') {
+              sectionContent = `Project Rules:\n${projectRules}`;
+            }
+            break;
+          case 'includeProjectConfig':
+            if (projectInfo) {
+              sectionContent = `Project Configuration:`;
+              if (projectInfo.testing && projectInfo.testing !== 'none') {
+                sectionContent += `\n- Testing: ${projectInfo.testing}`;
+              }
+              if (projectInfo.linter && projectInfo.linter !== 'none') {
+                sectionContent += `\n- Linter: ${projectInfo.linter}`;
+              }
+              if (projectInfo.formatter && projectInfo.formatter !== 'none') {
+                sectionContent += `\n- Formatter: ${projectInfo.formatter}`;
+              }
+              if (projectInfo.buildCommand) {
+                sectionContent += `\n- Build Command: ${projectInfo.buildCommand}`;
+              }
+              if (projectInfo.devCommand) {
+                sectionContent += `\n- Dev Command: ${projectInfo.devCommand}`;
+              }
+              if (projectInfo.serverType && projectInfo.serverType !== 'local') {
+                sectionContent += `\n- Server Type: ${projectInfo.serverType}`;
+              }
+              if (projectInfo.apiProtocol && projectInfo.apiProtocol !== 'rest') {
+                sectionContent += `\n- API Protocol: ${projectInfo.apiProtocol}`;
+              }
+              if (projectInfo.database && projectInfo.database !== 'none') {
+                sectionContent += `\n- Database: ${projectInfo.database}`;
+              }
+            }
+            break;
+          case 'includeSelectedFiles':
+            if (internalSelectedFiles.length > 0) {
+              sectionContent = `Selected Files:`;
+              internalSelectedFiles.forEach(file => {
+                const normalizedPath = file.path.replace(/\\/g, '/');
+                sectionContent += `\n- ${normalizedPath}`;
+              });
+              
+              // Add file contents if there are fewer than 5 files
+              if (internalSelectedFiles.length <= 5) {
+                sectionContent += '\n\nFile Contents:';
+                internalSelectedFiles.forEach(file => {
+                  const normalizedPath = file.path.replace(/\\/g, '/');
+                  sectionContent += `\n\n--- ${normalizedPath} ---\n`;
+                  sectionContent += `${file.content || 'Content not available'}`;
+                });
+              } else {
+                sectionContent += '\n\nToo many files selected to include contents. Please narrow your selection to view file contents.';
+              }
+            }
+            break;
+          case 'includeProjectPaths':
+            if (internalSelectedFiles.length > 0) {
+              sectionContent = `Project Paths:`;
+              internalSelectedFiles.forEach(file => {
+                const normalizedPath = file.path.replace(/\\/g, '/');
+                sectionContent += `\n- ${normalizedPath}`;
+              });
+            }
+            break;
+        }
+        
+        // If we have content, add it to the sections
+        if (sectionContent) {
+          enabledSections[key] = {
+            optionName: key,
+            content: sectionContent
+          };
+          hasEnabledSections = true;
+        }
+      }
+    });
+    
+    // If we have any sections, update the prompt
+    if (hasEnabledSections) {
+      // Wait a bit to ensure all state is initialized
+      setTimeout(() => {
+        updatePromptContent(enabledSections);
+      }, 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
   return (
     <div className="prompt-container">
       <div className="prompt-header">
@@ -1182,121 +1611,39 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
             <div className="prompt-editor" style={{ flex: '1' }}>
               <div className="prompt-editor-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h3 className="prompt-editor-title">User Prompt</h3>
-                <div className="prompt-editor-tabs" style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    className={`prompt-tab-btn ${userPromptTab === 'editor' ? 'active' : ''}`} 
-                    style={{ 
-                      padding: '6px 12px', 
-                      border: 'none', 
-                      borderRadius: '4px', 
-                      cursor: 'pointer',
-                      backgroundColor: userPromptTab === 'editor' ? 'var(--primary-color)' : 'var(--background-secondary)',
-                      color: userPromptTab === 'editor' ? 'white' : 'var(--text-color)'
-                    }}
-                    onClick={() => setUserPromptTab('editor')}
-                  >
-                    Editor
-                  </button>
-                  <button 
-                    className={`prompt-tab-btn ${userPromptTab === 'preview' ? 'active' : ''}`} 
-                    style={{ 
-                      padding: '6px 12px', 
-                      border: 'none', 
-                      borderRadius: '4px', 
-                      cursor: 'pointer',
-                      backgroundColor: userPromptTab === 'preview' ? 'var(--primary-color)' : 'var(--background-secondary)',
-                      color: userPromptTab === 'preview' ? 'white' : 'var(--text-color)'
-                    }}
-                    onClick={() => {
-                      // Generate preview with selected options
-                      let previewPrompt = generatePreviewContent();
-                      
-                      // Combine user prompt with generated content
-                      let fullPreview = userPrompt;
-                      
-                      // Add a separator if there's already content
-                      if (fullPreview.trim() !== '' && previewPrompt.trim() !== '') {
-                        fullPreview += '\n\n';
-                      }
-                      
-                      // Add the generated content
-                      if (previewPrompt.trim() !== '') {
-                        fullPreview += previewPrompt;
-                      }
-                      
-                      // Update the preview
-                      setPromptPreview(fullPreview);
-                      
-                      // Switch to preview tab
-                      setUserPromptTab('preview');
-                    }}
-                  >
-                    Preview
-                  </button>
-                </div>
               </div>
               
-              {userPromptTab === 'editor' && (
+              <div className="prompt-requirement-section" style={{ marginBottom: '15px' }}>
+                <label htmlFor="user-requirement" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                  What do you need help with?
+                </label>
                 <textarea
-                  ref={editorRef}
-                  className="prompt-editor-textarea"
-                  value={userPrompt}
-                  onChange={(e) => setUserPrompt(e.target.value)}
-                  placeholder="Write your prompt here..."
-                  style={{ minHeight: '300px' }}
+                  id="user-requirement"
+                  className="prompt-requirement-textarea"
+                  value={userRequirement}
+                  onChange={(e) => setUserRequirement(e.target.value)}
+                  placeholder="Describe what you need help with..."
+                  style={{ 
+                    width: '100%',
+                    minHeight: '80px',
+                    padding: '10px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-primary)',
+                    color: 'var(--text-primary)',
+                    resize: 'vertical'
+                  }}
                 />
-              )}
+              </div>
               
-              {userPromptTab === 'preview' && (
-                <div style={{ position: 'relative' }}>
-                  <div 
-                    className="prompt-preview-area"
-                    style={{ 
-                      minHeight: '300px',
-                      backgroundColor: 'var(--background-primary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px',
-                      padding: '12px',
-                      overflowY: 'auto',
-                      whiteSpace: 'pre-wrap',
-                      fontFamily: 'monospace'
-                    }}
-                  >
-                    {promptPreview || 'No content to preview.'}
-                  </div>
-                  
-                  <button 
-                    className="prompt-action-btn"
-                    style={{ 
-                      position: 'absolute', 
-                      top: '10px', 
-                      right: '10px',
-                      padding: '4px 8px',
-                      fontSize: '12px',
-                      backgroundColor: 'var(--background-secondary)',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                    onClick={() => {
-                      navigator.clipboard.writeText(promptPreview)
-                        .then(() => {
-                          alert('Preview copied to clipboard!');
-                        })
-                        .catch(err => {
-                          console.error('Error copying to clipboard:', err);
-                          alert('Failed to copy to clipboard');
-                        });
-                    }}
-                  >
-                    <Copy size={14} />
-                    Copy
-                  </button>
-                </div>
-              )}
+              <textarea
+                ref={editorRef}
+                className="prompt-editor-textarea"
+                value={userPrompt}
+                onChange={(e) => setUserPrompt(e.target.value)}
+                placeholder="Write your prompt here..."
+                style={{ minHeight: '300px' }}
+              />
             </div>
             
             <div className="prompt-options-panel" style={{ 
@@ -1308,14 +1655,14 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
               flexDirection: 'column',
               gap: '12px'
             }}>
-              <h3 style={{ margin: '0 0 12px 0' }}>Include in Prompt</h3>
+              <h3 style={{ margin: '0 0 12px 0' }}>Prompt Options</h3>
               
               <div className="prompt-option-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input 
                   type="checkbox" 
                   id="include-language" 
-                  checked={promptOptions.includeProgrammingLanguage}
-                  onChange={(e) => setPromptOptions({...promptOptions, includeProgrammingLanguage: e.target.checked})}
+                  checked={!!promptOptions.includeProgrammingLanguage}
+                  onChange={(e) => handleOptionChange('includeProgrammingLanguage', e.target.checked)}
                 />
                 <label htmlFor="include-language">Programming Language</label>
               </div>
@@ -1324,8 +1671,8 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
                 <input 
                   type="checkbox" 
                   id="include-framework" 
-                  checked={promptOptions.includeFramework}
-                  onChange={(e) => setPromptOptions({...promptOptions, includeFramework: e.target.checked})}
+                  checked={!!promptOptions.includeFramework}
+                  onChange={(e) => handleOptionChange('includeFramework', e.target.checked)}
                 />
                 <label htmlFor="include-framework">Framework</label>
               </div>
@@ -1334,8 +1681,8 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
                 <input 
                   type="checkbox" 
                   id="include-tech-stack" 
-                  checked={promptOptions.includeTechStack}
-                  onChange={(e) => setPromptOptions({...promptOptions, includeTechStack: e.target.checked})}
+                  checked={!!promptOptions.includeTechStack}
+                  onChange={(e) => handleOptionChange('includeTechStack', e.target.checked)}
                 />
                 <label htmlFor="include-tech-stack">Tech Stack</label>
               </div>
@@ -1344,8 +1691,8 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
                 <input 
                   type="checkbox" 
                   id="include-rules" 
-                  checked={promptOptions.includeRules}
-                  onChange={(e) => setPromptOptions({...promptOptions, includeRules: e.target.checked})}
+                  checked={!!promptOptions.includeRules}
+                  onChange={(e) => handleOptionChange('includeRules', e.target.checked)}
                 />
                 <label htmlFor="include-rules">Project Rules</label>
               </div>
@@ -1354,8 +1701,8 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
                 <input 
                   type="checkbox" 
                   id="include-project-config" 
-                  checked={promptOptions.includeProjectConfig}
-                  onChange={(e) => setPromptOptions({...promptOptions, includeProjectConfig: e.target.checked})}
+                  checked={!!promptOptions.includeProjectConfig}
+                  onChange={(e) => handleOptionChange('includeProjectConfig', e.target.checked)}
                 />
                 <label htmlFor="include-project-config">Project Configuration</label>
               </div>
@@ -1364,8 +1711,8 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
                 <input 
                   type="checkbox" 
                   id="include-selected-files" 
-                  checked={promptOptions.includeSelectedFiles}
-                  onChange={(e) => setPromptOptions({...promptOptions, includeSelectedFiles: e.target.checked})}
+                  checked={!!promptOptions.includeSelectedFiles}
+                  onChange={(e) => handleOptionChange('includeSelectedFiles', e.target.checked)}
                   disabled={internalSelectedFiles.length === 0}
                 />
                 <label 
@@ -1380,8 +1727,8 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
                 <input 
                   type="checkbox" 
                   id="include-project-paths" 
-                  checked={promptOptions.includeProjectPaths}
-                  onChange={(e) => setPromptOptions({...promptOptions, includeProjectPaths: e.target.checked})}
+                  checked={!!promptOptions.includeProjectPaths}
+                  onChange={(e) => handleOptionChange('includeProjectPaths', e.target.checked)}
                   disabled={internalSelectedFiles.length === 0}
                 />
                 <label 
@@ -1390,65 +1737,6 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
                 >
                   Project Paths {internalSelectedFiles.length === 0 ? '(none selected)' : `(${internalSelectedFiles.length})`}
                 </label>
-              </div>
-              
-              <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-                <button 
-                  className="prompt-action-btn" 
-                  style={{ flex: '1' }}
-                  onClick={() => {
-                    // Generate preview with selected options
-                    let previewPrompt = generatePreviewContent();
-                    
-                    // Combine user prompt with generated content
-                    let fullPreview = userPrompt;
-                    
-                    // Add a separator if there's already content
-                    if (fullPreview.trim() !== '' && previewPrompt.trim() !== '') {
-                      fullPreview += '\n\n';
-                    }
-                    
-                    // Add the generated content
-                    if (previewPrompt.trim() !== '') {
-                      fullPreview += previewPrompt;
-                    }
-                    
-                    // Update the preview
-                    setPromptPreview(fullPreview);
-                    
-                    // Switch to preview tab
-                    setUserPromptTab('preview');
-                  }}
-                >
-                  Preview
-                </button>
-                
-                <button 
-                  className="prompt-action-btn" 
-                  style={{ flex: '1' }}
-                  onClick={() => {
-                    // Generate content with selected options
-                    let optionsContent = generatePreviewContent();
-                    
-                    // Add the options content to the prompt if there's content to add
-                    if (optionsContent.trim() !== '') {
-                      let generatedPrompt = userPrompt;
-                      
-                      // Add a separator if there's already content
-                      if (generatedPrompt.trim() !== '') {
-                        generatedPrompt += '\n\n';
-                      }
-                      
-                      generatedPrompt += optionsContent;
-                      setUserPrompt(generatedPrompt);
-                    }
-                    
-                    // Switch back to editor tab
-                    setUserPromptTab('editor');
-                  }}
-                >
-                  Add to Prompt
-                </button>
               </div>
             </div>
           </div>
