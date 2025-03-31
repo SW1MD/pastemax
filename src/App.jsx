@@ -1946,6 +1946,19 @@ const App = () => {
                         
                         return selectedFilesWithContent;
                       })()}
+                      projectRules={(() => {
+                        // Get project rules from localStorage
+                        try {
+                          const savedProjectConfig = localStorage.getItem('project-config');
+                          if (savedProjectConfig) {
+                            const config = JSON.parse(savedProjectConfig);
+                            return config.projectRules || '';
+                          }
+                        } catch (e) {
+                          console.error('Error loading project rules:', e);
+                        }
+                        return '';
+                      })()}
                       fileCounter={fileCounter}
                       tokenCounter={tokenCounter}
                       toggleSidebar={toggleSidebar}

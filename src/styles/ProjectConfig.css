@@ -33,6 +33,41 @@
   margin-bottom: 2rem;
 }
 
+.config-sections.centered {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 900px;
+  margin: 0 auto 2rem auto;
+}
+
+.project-path-display {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.project-path-display .path-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  color: var(--text-primary);
+}
+
+.project-path-display .path-value {
+  color: var(--text-secondary);
+  word-break: break-all;
+  font-family: monospace;
+  background: var(--bg-primary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  flex-grow: 1;
+}
+
 .config-section {
   background: var(--bg-secondary);
   padding: 1.5rem;
@@ -73,16 +108,64 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.project-config select:focus,
+/* Override select styling for better contrast */
+.project-config select {
+  background-color: #2d2d2d;
+  color: white;
+  font-weight: 500;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, white 50%),
+                    linear-gradient(135deg, white 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(1em + 2px),
+                       calc(100% - 15px) calc(1em + 2px);
+  background-size: 5px 5px,
+                   5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+
+/* Ensure options have proper contrast */
+.project-config select option {
+  background-color: #2d2d2d;
+  color: white;
+  padding: 10px;
+}
+
+/* Add a darker background for hover/focus states of options */
+.project-config select option:hover,
+.project-config select option:focus,
+.project-config select option:active {
+  background-color: #4a4a4a;
+  color: white;
+}
+
+/* Make sure the dropdown stands out when opened */
+.project-config select:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-transparent);
+  background-color: #3a3a3a;
+  outline: none;
+}
+
+.project-config select:hover {
+  border-color: var(--accent-color);
+  background-color: #3a3a3a;
+}
+
+.project-config select:active {
+  background-color: var(--bg-secondary);
+  border-color: var(--accent-color);
+}
+
+.project-config input:hover {
+  border-color: var(--accent-color);
+}
+
+/* Input focus styles */
 .project-config input:focus {
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 0 2px var(--accent-color-transparent);
-}
-
-.project-config select:hover,
-.project-config input:hover {
-  border-color: var(--accent-color);
 }
 
 .save-config {
@@ -160,6 +243,25 @@
   background: var(--accent-color-hover);
 }
 
+@media (max-width: 767px) {
+  .config-sections.centered {
+    grid-template-columns: 1fr;
+  }
+  
+  .project-path-display {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .project-path-display .path-label {
+    margin-bottom: 0.5rem;
+  }
+  
+  .project-path-display .path-value {
+    width: 100%;
+  }
+}
+
 @media (min-width: 768px) {
   .config-sections {
     grid-template-columns: repeat(2, 1fr);
@@ -169,6 +271,10 @@
 @media (min-width: 1200px) {
   .config-sections {
     grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .config-sections.centered {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -216,4 +322,77 @@
 
 .content-header.project-page {
   padding: 0.2rem 0;
+}
+
+.command-section {
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  max-width: 900px;
+  margin: 2rem auto;
+}
+
+.command-section h3 {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+  font-size: 1.4rem;
+}
+
+.command-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 767px) {
+  .command-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rules-section {
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  max-width: 900px;
+  margin: 2rem auto;
+}
+
+.rules-section h3 {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+  font-size: 1.4rem;
+}
+
+.rules-container {
+  width: 100%;
+}
+
+.project-config textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: #2d2d2d;
+  color: white;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 150px;
+  line-height: 1.5;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.project-config textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-transparent);
+}
+
+.project-config textarea:hover {
+  border-color: var(--accent-color);
 } 

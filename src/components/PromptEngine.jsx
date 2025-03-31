@@ -7,7 +7,7 @@ const templatePrompts = [
     id: 'template-project',
     title: 'Project-Specific Help',
     description: 'Get help with your specific project configuration.',
-    template: 'I need help with my {{project_type}} project. Here are the details of my project configuration:\n\n- Framework: {{framework}}\n- Tech Stack: {{tech_stack}}\n- Testing Tools: {{testing}}\n- Linter: {{linter}}\n- Formatter: {{formatter}}\n- Build Command: {{build_command}}\n- Dev Command: {{dev_command}}\n- Package Manager: {{package_manager}}\n- Node Version: {{node_version}}\n\nI need help with the following issue:\n\n{{issue_description}}\n\nPlease provide detailed guidance specific to my project configuration.',
+    template: 'I need help with my {{project_type}} project. Here are the details of my project configuration:\n\n- Framework: {{framework}}\n- Tech Stack: {{tech_stack}}\n- Testing Tools: {{testing}}\n- Linter: {{linter}}\n- Formatter: {{formatter}}\n- Build Command: {{build_command}}\n- Dev Command: {{dev_command}}\n- Package Manager: {{package_manager}}\n- Node Version: {{node_version}}\n- Server Type: {{server_type}}\n- API Protocol: {{api_protocol}}\n- Database: {{database}}\n\n{{project_rules_section}}\n\nI need help with the following issue:\n\n{{issue_description}}\n\nPlease provide detailed guidance specific to my project configuration.',
     variables: [
       { name: 'project_type', description: 'Type of project', default: 'javascript' },
       { name: 'framework', description: 'Framework used', default: 'none' },
@@ -19,6 +19,10 @@ const templatePrompts = [
       { name: 'dev_command', description: 'Development command', default: 'npm run dev' },
       { name: 'package_manager', description: 'Package manager', default: 'npm' },
       { name: 'node_version', description: 'Node.js version', default: '18.x' },
+      { name: 'server_type', description: 'Server type', default: 'local' },
+      { name: 'api_protocol', description: 'API protocol', default: 'rest' },
+      { name: 'database', description: 'Database type', default: 'none' },
+      { name: 'project_rules_section', description: 'Project rules', default: '' },
       { name: 'issue_description', description: 'Description of the issue', default: 'I need help implementing a new feature...' }
     ],
     tags: ['project', 'configuration', 'help']
@@ -257,43 +261,79 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     console.log('selectedFiles prop changed:', selectedFiles);
   }, [selectedFiles]);
   
+  // Initialize includeRules based on projectRules
+  useEffect(() => {
+    if (projectRules && projectRules.trim() !== '') {
+      setPromptOptions(prevOptions => ({
+        ...prevOptions,
+        includeRules: true
+      }));
+    }
+  }, [projectRules]);
+  
   // Update variables with project info
   const updateVariablesWithProjectInfo = (variables, projectInfo) => {
     const updatedVariables = { ...variables };
     
-    // Map project config to template variables
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'project_type')) {
-      updatedVariables.project_type = projectInfo.projectType || updatedVariables.project_type;
+    // Update all variables based on the project info
+    if (Object.prototype.hasOwnProperty.call(variables, 'project_type') && projectInfo.projectType) {
+      updatedVariables.project_type = projectInfo.projectType;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'language')) {
-      updatedVariables.language = projectInfo.language || updatedVariables.language;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'language') && projectInfo.language) {
+      updatedVariables.language = projectInfo.language;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'framework')) {
-      updatedVariables.framework = projectInfo.framework || updatedVariables.framework;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'framework') && projectInfo.framework) {
+      updatedVariables.framework = projectInfo.framework === 'none' ? 'None' : projectInfo.framework;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'tech_stack')) {
-      updatedVariables.tech_stack = projectInfo.techStack || updatedVariables.tech_stack;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'tech_stack') && projectInfo.techStack) {
+      updatedVariables.tech_stack = projectInfo.techStack;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'testing')) {
-      updatedVariables.testing = projectInfo.testing || updatedVariables.testing;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'testing') && projectInfo.testing) {
+      updatedVariables.testing = projectInfo.testing === 'none' ? 'None' : projectInfo.testing;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'linter')) {
-      updatedVariables.linter = projectInfo.linter || updatedVariables.linter;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'linter') && projectInfo.linter) {
+      updatedVariables.linter = projectInfo.linter === 'none' ? 'None' : projectInfo.linter;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'formatter')) {
-      updatedVariables.formatter = projectInfo.formatter || updatedVariables.formatter;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'formatter') && projectInfo.formatter) {
+      updatedVariables.formatter = projectInfo.formatter === 'none' ? 'None' : projectInfo.formatter;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'build_command')) {
-      updatedVariables.build_command = projectInfo.buildCommand || updatedVariables.build_command;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'build_command') && projectInfo.buildCommand) {
+      updatedVariables.build_command = projectInfo.buildCommand;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'dev_command')) {
-      updatedVariables.dev_command = projectInfo.devCommand || updatedVariables.dev_command;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'dev_command') && projectInfo.devCommand) {
+      updatedVariables.dev_command = projectInfo.devCommand;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'package_manager')) {
-      updatedVariables.package_manager = projectInfo.packageManager || updatedVariables.package_manager;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'package_manager') && projectInfo.packageManager) {
+      updatedVariables.package_manager = projectInfo.packageManager;
     }
-    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'node_version')) {
-      updatedVariables.node_version = projectInfo.nodeVersion || updatedVariables.node_version;
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'node_version') && projectInfo.nodeVersion) {
+      updatedVariables.node_version = projectInfo.nodeVersion;
+    }
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'project_rules') && projectInfo.projectRules) {
+      updatedVariables.project_rules = projectInfo.projectRules;
+    }
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'database') && projectInfo.database) {
+      updatedVariables.database = projectInfo.database === 'other' ? projectInfo.customDatabase : projectInfo.database;
+    }
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'server_type') && projectInfo.serverType) {
+      updatedVariables.server_type = projectInfo.serverType;
+    }
+    
+    if (Object.prototype.hasOwnProperty.call(variables, 'api_protocol') && projectInfo.apiProtocol) {
+      updatedVariables.api_protocol = projectInfo.apiProtocol;
     }
     
     return updatedVariables;
@@ -324,18 +364,22 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     selectedTemplate ? selectedTemplate.id : null
   ]);
   
-  // Update template variables when config changes
+  // Update template when project configuration changes
   const updateTemplateWithNewConfig = (newConfig) => {
-    // Get project info based on the new config
+    if (!selectedTemplate) return;
+    
     const projectInfo = getProjectInfoFromConfig(newConfig);
-    console.log('Project info from new config:', projectInfo);
+    console.log('Updating template with new config, project info:', projectInfo);
     
-    // Get the current template variables
-    const currentVariables = { ...variables };
+    // Update the variables with the new project info
+    const updatedVariables = updateVariablesWithProjectInfo(variables, projectInfo);
     
-    // Update variables with the new project info
-    const updatedVariables = updateVariablesWithProjectInfo(currentVariables, projectInfo);
-    console.log('Updated variables:', updatedVariables);
+    // If project rules exist, update the project_rules_section variable
+    if (Object.prototype.hasOwnProperty.call(updatedVariables, 'project_rules_section') && 
+        newConfig.projectRules && 
+        newConfig.projectRules.trim() !== '') {
+      updatedVariables.project_rules_section = newConfig.projectRules;
+    }
     
     // Update the variables state
     setVariables(updatedVariables);
@@ -380,8 +424,15 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
       qualityTools.push(config.formatter === 'other' ? config.customFormatter : config.formatter);
     }
     
+    // Get database info
+    let database = config.database === 'other' ? config.customDatabase : config.database;
+    
+    // Get server info
+    let serverType = config.serverType || 'local';
+    let apiProtocol = config.apiProtocol || 'rest';
+    
     return {
-      projectType: config.projectType || 'javascript',
+      projectType: config.projectType === 'other' ? config.customProjectType : config.projectType || 'javascript',
       language: language,
       techStack: techStack.join(', ') || 'Not specified',
       framework: (config.framework === 'other' ? config.customFramework : config.framework) || 'none',
@@ -393,7 +444,11 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
       qualityTools: qualityTools.join(', ') || 'None',
       packageManager: config.packageManager || 'npm',
       nodeVersion: config.nodeVersion || '18.x',
-      outputDir: config.outputDir || 'dist'
+      outputDir: config.outputDir || 'dist',
+      projectRules: config.projectRules || '',
+      database: database || 'none',
+      serverType: serverType,
+      apiProtocol: apiProtocol
     };
   };
   
@@ -405,6 +460,20 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
         const config = JSON.parse(savedProjectConfig);
         console.log('Loaded project config from localStorage:', config);
         setProjectConfig(config);
+        
+        // If project rules exist, set the includeRules option to true
+        if (config.projectRules && config.projectRules.trim() !== '') {
+          setPromptOptions(prevOptions => ({
+            ...prevOptions,
+            includeRules: true
+          }));
+        }
+        
+        // If a template is selected, update the variables with the new config
+        if (selectedTemplate) {
+          console.log('Template selected, updating with new config:', selectedTemplate.id);
+          updateTemplateWithNewConfig(config);
+        }
       } catch (e) {
         console.error('Error loading project config:', e);
       }
@@ -469,8 +538,24 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
     console.log('Updating final prompt with variables:', vars);
     let result = template;
     
+    // Handle special case for project_rules_section
+    if (Object.prototype.hasOwnProperty.call(vars, 'project_rules_section')) {
+      if (vars.project_rules_section && vars.project_rules_section.trim() !== '') {
+        // Replace the variable with formatted project rules
+        const formattedRules = `Project Rules:\n${vars.project_rules_section}`;
+        const regex = new RegExp(`\\{\\{project_rules_section\\}\\}`, 'g');
+        result = result.replace(regex, formattedRules);
+      } else {
+        // If no project rules, remove the line containing the variable
+        const regex = new RegExp(`\\{\\{project_rules_section\\}\\}\\n?`, 'g');
+        result = result.replace(regex, '');
+      }
+    }
+    
     // Replace all variables in the format {{variable_name}}
     Object.keys(vars).forEach(key => {
+      if (key === 'project_rules_section') return; // Skip, already handled
+
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
       
       // Skip "none" values
@@ -981,6 +1066,15 @@ const PromptEngine = ({ selectedFiles = [], projectRules = '' }) => {
           }
           if (projectInfo.devCommand) {
             previewPrompt += `- Dev Command: ${projectInfo.devCommand}\n`;
+          }
+          if (projectInfo.serverType && projectInfo.serverType !== 'local') {
+            previewPrompt += `- Server Type: ${projectInfo.serverType}\n`;
+          }
+          if (projectInfo.apiProtocol && projectInfo.apiProtocol !== 'rest') {
+            previewPrompt += `- API Protocol: ${projectInfo.apiProtocol}\n`;
+          }
+          if (projectInfo.database && projectInfo.database !== 'none') {
+            previewPrompt += `- Database: ${projectInfo.database}\n`;
           }
         }
       }

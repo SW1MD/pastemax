@@ -221,13 +221,14 @@
 
 /* Editor Content Area */
 .code-editor-content {
-  position: relative;
-  flex: 1;
   width: 100%;
-  height: calc(100% - 40px); /* Subtract header height */
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  height: 100%;
+  position: relative;
+  background-color: #1E1E1E !important;
+  flex: 1; /* Allow content to expand */
+  display: flex; /* Add flexbox for better sizing behavior */
+  flex-direction: column; /* Stack children vertically */
+  padding-top: 5px; /* Add spacing between editor and toolbar */
 }
 
 /* Ensure Monaco editor is rendered properly */
@@ -1047,6 +1048,7 @@
   flex: 1; /* Allow content to expand */
   display: flex; /* Add flexbox for better sizing behavior */
   flex-direction: column; /* Stack children vertically */
+  padding-top: 5px; /* Add spacing between editor and toolbar */
 }
 
 /* Monaco editor overrides to ensure full height and proper scrolling */

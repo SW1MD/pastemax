@@ -94,7 +94,10 @@ const CodeEditor = ({
       renderWhitespace: 'selection',
       theme: 'vs-dark',
       fixedOverflowWidgets: true, // Fix cut-off widgets
-      padding: { bottom: 20 } // Add bottom padding to prevent cut-off
+      padding: { 
+        top: 5,      // Add top padding
+        bottom: 20   // Keep bottom padding to prevent cut-off
+      }
     };
   };
   

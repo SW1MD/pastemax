@@ -16,14 +16,21 @@ const ProjectConfig = () => {
     typescript: false,
     cssFramework: 'none',
     stateManagement: 'none',
+    serverType: 'local',
+    apiProtocol: 'rest',
+    database: 'none',
+    customDatabase: '',
     customFramework: '',
     customTesting: '',
     customLinter: '',
     customFormatter: '',
     customStateManagement: '',
+    customProjectType: '',
+    projectRules: '',
   });
 
   const [saveStatus, setSaveStatus] = useState({ message: '', type: '' });
+  const [projectPath, setProjectPath] = useState('');
 
   // Define build commands for each project type
   const buildCommands = {
@@ -33,6 +40,8 @@ const ProjectConfig = () => {
     java: { build: 'mvn package', dev: 'mvn spring-boot:run', output: 'target' },
     go: { build: 'go build', dev: 'go run .', output: 'bin' },
     rust: { build: 'cargo build', dev: 'cargo run', output: 'target/debug' },
+    cpp: { build: 'cmake --build build', dev: './build/app', output: 'build' },
+    c: { build: 'make', dev: './a.out', output: 'bin' },
   };
 
   // Define linters for each project type
@@ -69,6 +78,18 @@ const ProjectConfig = () => {
       { id: 'clippy', name: 'Clippy' },
       { id: 'other', name: 'Other' }
     ],
+    cpp: [
+      { id: 'none', name: 'None' },
+      { id: 'clang-tidy', name: 'Clang-Tidy' },
+      { id: 'cppcheck', name: 'Cppcheck' },
+      { id: 'other', name: 'Other' }
+    ],
+    c: [
+      { id: 'none', name: 'None' },
+      { id: 'cppcheck', name: 'Cppcheck' },
+      { id: 'splint', name: 'Splint' },
+      { id: 'other', name: 'Other' }
+    ],
   };
 
   // Define formatters for each project type
@@ -102,6 +123,18 @@ const ProjectConfig = () => {
     rust: [
       { id: 'none', name: 'None' },
       { id: 'rustfmt', name: 'rustfmt' },
+      { id: 'other', name: 'Other' }
+    ],
+    cpp: [
+      { id: 'none', name: 'None' },
+      { id: 'clang-format', name: 'Clang Format' },
+      { id: 'astyle', name: 'Artistic Style' },
+      { id: 'other', name: 'Other' }
+    ],
+    c: [
+      { id: 'none', name: 'None' },
+      { id: 'clang-format', name: 'Clang Format' },
+      { id: 'astyle', name: 'Artistic Style' },
       { id: 'other', name: 'Other' }
     ],
   };
@@ -154,6 +187,19 @@ const ProjectConfig = () => {
       { id: 'rocket', name: 'Rocket' },
       { id: 'other', name: 'Other' }
     ],
+    cpp: [
+      { id: 'none', name: 'None' },
+      { id: 'qt', name: 'Qt' },
+      { id: 'boost', name: 'Boost' },
+      { id: 'SDL', name: 'SDL' },
+      { id: 'other', name: 'Other' }
+    ],
+    c: [
+      { id: 'none', name: 'None' },
+      { id: 'SDL', name: 'SDL' },
+      { id: 'GTK', name: 'GTK' },
+      { id: 'other', name: 'Other' }
+    ],
   };
 
   const projectTypes = [
@@ -163,6 +209,9 @@ const ProjectConfig = () => {
     { id: 'java', name: 'Java' },
     { id: 'go', name: 'Go' },
     { id: 'rust', name: 'Rust' },
+    { id: 'cpp', name: 'C++' },
+    { id: 'c', name: 'C' },
+    { id: 'other', name: 'Other' },
   ];
 
   const nodeVersions = ['20.x', '18.x', '16.x', '14.x'];
@@ -243,7 +292,7 @@ const ProjectConfig = () => {
 
       // Update build settings when project type changes
       if (name === 'projectType') {
-        const buildSettings = buildCommands[value];
+        const buildSettings = buildCommands[value] || buildCommands['typescript'];
         newConfig.buildCommand = buildSettings.build;
         newConfig.devCommand = buildSettings.dev;
         newConfig.outputDir = buildSettings.output;
@@ -260,9 +309,36 @@ const ProjectConfig = () => {
         newConfig.stateManagement = 'none';
         newConfig.customStateManagement = '';
         newConfig.cssFramework = 'none';
+        
+        // Set appropriate server defaults based on project type
+        if (['python', 'java', 'go', 'rust'].includes(value)) {
+          newConfig.serverType = 'local';
+          newConfig.apiProtocol = 'rest';
+          newConfig.database = value === 'python' ? 'postgres' : 
+                              value === 'java' ? 'mysql' : 
+                              value === 'go' ? 'postgres' : 'none';
+        } else if (['typescript', 'javascript'].includes(value)) {
+          newConfig.serverType = 'local';
+          newConfig.apiProtocol = 'rest';
+          newConfig.database = 'mongodb';
+        } else if (['cpp', 'c'].includes(value)) {
+          newConfig.serverType = 'local';
+          newConfig.apiProtocol = 'rest';
+          newConfig.database = 'sqlite';
+        }
 
         // Reset TypeScript option
         newConfig.typescript = value === 'typescript';
+        
+        // Clear custom project type if not 'other'
+        if (value !== 'other') {
+          newConfig.customProjectType = '';
+        }
+      }
+      
+      // Clear custom database if not 'other'
+      if (name === 'database' && value !== 'other') {
+        newConfig.customDatabase = '';
       }
 
       // Update when framework changes
@@ -329,11 +405,14 @@ const ProjectConfig = () => {
       // Create project configuration
       const projectConfig = {
         ...config,
+        projectType: config.projectType === 'other' ? config.customProjectType : config.projectType,
         framework: config.framework === 'other' ? config.customFramework : config.framework,
         testing: config.testing === 'other' ? config.customTesting : config.testing,
         linter: config.linter === 'other' ? config.customLinter : config.linter,
         formatter: config.formatter === 'other' ? config.customFormatter : config.formatter,
         stateManagement: config.stateManagement === 'other' ? config.customStateManagement : config.stateManagement,
+        database: config.database === 'other' ? config.customDatabase : config.database,
+        projectRules: config.projectRules.trim(),
       };
 
       // TODO: Add API call here to create project with configuration
@@ -357,6 +436,12 @@ const ProjectConfig = () => {
     if (savedConfig) {
       setConfig(JSON.parse(savedConfig));
     }
+    
+    // Get the project path from localStorage if available
+    const savedFolder = localStorage.getItem('pastemax-selected-folder');
+    if (savedFolder) {
+      setProjectPath(savedFolder);
+    }
   }, []);
 
   return (
@@ -369,8 +454,16 @@ const ProjectConfig = () => {
           </div>
         )}
       </div>
+      
+      {projectPath && (
+        <div className="project-path-display">
+          <span className="path-label">Project Path:</span>
+          <span className="path-value">{projectPath}</span>
+        </div>
+      )}
+      
       <form>
-        <div className="config-sections">
+        <div className="config-sections centered">
           <div className="config-section">
             <h3>Basic Configuration</h3>
             <label>
@@ -381,6 +474,19 @@ const ProjectConfig = () => {
                 ))}
               </select>
             </label>
+            
+            {config.projectType === 'other' && (
+              <label>
+                Custom Project Type
+                <input
+                  type="text"
+                  name="customProjectType"
+                  value={config.customProjectType}
+                  onChange={handleChange}
+                  placeholder="Enter project type"
+                />
+              </label>
+            )}
 
             <label>
               Framework
@@ -427,7 +533,84 @@ const ProjectConfig = () => {
           </div>
 
           <div className="config-section">
-            <h3>Build Settings</h3>
+            <h3>Backend/Server Info</h3>
+            <label>
+              Server Type
+              <select name="serverType" value={config.serverType || 'local'} onChange={handleChange}>
+                <option value="local">Local Server</option>
+                <option value="cloud">Cloud Hosted</option>
+                <option value="serverless">Serverless</option>
+                <option value="docker">Docker Container</option>
+              </select>
+            </label>
+            
+            <label>
+              API Protocol
+              <select name="apiProtocol" value={config.apiProtocol || 'rest'} onChange={handleChange}>
+                <option value="rest">REST</option>
+                <option value="graphql">GraphQL</option>
+                <option value="grpc">gRPC</option>
+                <option value="websocket">WebSocket</option>
+              </select>
+            </label>
+            
+            <label>
+              Database
+              <select name="database" value={config.database || 'none'} onChange={handleChange}>
+                <option value="none">None</option>
+                <option value="postgres">PostgreSQL</option>
+                <option value="mongodb">MongoDB</option>
+                <option value="mysql">MySQL</option>
+                <option value="sqlite">SQLite</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            
+            {config.database === 'other' && (
+              <label>
+                Custom Database
+                <input
+                  type="text"
+                  name="customDatabase"
+                  value={config.customDatabase || ''}
+                  onChange={handleChange}
+                  placeholder="Enter database name"
+                />
+              </label>
+            )}
+            
+            <label>
+              Output Directory
+              <input
+                type="text"
+                name="outputDir"
+                value={config.outputDir}
+                onChange={handleChange}
+                placeholder={buildCommands[config.projectType === 'other' ? 'typescript' : config.projectType]?.output || 'dist'}
+              />
+            </label>
+          </div>
+        </div>
+        
+        <div className="rules-section">
+          <h3>Project Rules</h3>
+          <div className="rules-container">
+            <label>
+              Define rules and guidelines for your project
+              <textarea
+                name="projectRules"
+                value={config.projectRules}
+                onChange={handleChange}
+                placeholder="Enter project coding standards, conventions, and guidelines to follow..."
+                rows={6}
+              />
+            </label>
+          </div>
+        </div>
+        
+        <div className="command-section">
+          <h3>Commands</h3>
+          <div className="command-inputs">
             <label>
               Build Command
               <input
@@ -435,7 +618,7 @@ const ProjectConfig = () => {
                 name="buildCommand"
                 value={config.buildCommand}
                 onChange={handleChange}
-                placeholder={buildCommands[config.projectType].build}
+                placeholder={buildCommands[config.projectType === 'other' ? 'typescript' : config.projectType]?.build || 'npm run build'}
               />
             </label>
 
@@ -446,18 +629,7 @@ const ProjectConfig = () => {
                 name="devCommand"
                 value={config.devCommand}
                 onChange={handleChange}
-                placeholder={buildCommands[config.projectType].dev}
-              />
-            </label>
-
-            <label>
-              Output Directory
-              <input
-                type="text"
-                name="outputDir"
-                value={config.outputDir}
-                onChange={handleChange}
-                placeholder={buildCommands[config.projectType].output}
+                placeholder={buildCommands[config.projectType === 'other' ? 'typescript' : config.projectType]?.dev || 'npm run dev'}
               />
             </label>
           </div>
